@@ -1,0 +1,1 @@
+{"buildTargets":["clean","ghcr_all","ghcr_build","ghcr_push","ghcr_tag","help","version"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}
