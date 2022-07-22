@@ -23,8 +23,6 @@ import (
 	"strings"
 
 	"github.com/package-url/packageurl-go"
-
-	packageurl "github.com/package-url/packageurl-go"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
