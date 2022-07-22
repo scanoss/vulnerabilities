@@ -20,7 +20,6 @@ package main
 import (
 	"fmt"
 	"os"
-
 	"scanoss.com/vulnerabilities/pkg/cmd"
 )
 
