@@ -18,16 +18,10 @@ package models
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
-	pkggodevclient "github.com/guseggert/pkggodev-client"
-	"github.com/jmoiron/sqlx"
-	"github.com/package-url/packageurl-go"
 	"regexp"
-	myconfig "scanoss.com/dependencies/pkg/config"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"scanoss.com/dependencies/pkg/utils"
+
+	"github.com/jmoiron/sqlx"
+	myconfig "scanoss.com/vulnerabilities/pkg/config"
 )
 
 type GolangProjects struct {
@@ -48,6 +42,7 @@ func NewGolangProjectModel(ctx context.Context, conn *sqlx.Conn, config *myconfi
 	}
 }
 
+/*
 // GetGoLangUrlByPurlString searches the Golang Projects for the specified Purl (and requirement)
 func (m *GolangProjects) GetGoLangUrlByPurlString(purlString, purlReq string) (AllUrl, error) {
 	if len(purlString) == 0 {
@@ -301,4 +296,4 @@ func (m *GolangProjects) queryPkgGoDev(purlName, purlVersion string) (AllUrl, *p
 		Url:       fmt.Sprintf("https://%v", comp.Repository),
 	}
 	return allUrl, comp, latest, nil
-}
+}*/

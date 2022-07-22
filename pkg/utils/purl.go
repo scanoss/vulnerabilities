@@ -19,10 +19,13 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/package-url/packageurl-go"
 	"regexp"
-	zlog "scanoss.com/dependencies/pkg/logger"
 	"strings"
+
+	"github.com/package-url/packageurl-go"
+
+	packageurl "github.com/package-url/packageurl-go"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 var pkgRegex = regexp.MustCompile(`^pkg:(?P<type>\w+)/(?P<name>.+)$`) // regex to parse purl name from purl string

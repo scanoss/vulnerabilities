@@ -16,16 +16,7 @@
 
 package models
 
-import (
-	"context"
-	"fmt"
-	pkggodevclient "github.com/guseggert/pkggodev-client"
-	"github.com/jmoiron/sqlx"
-	myconfig "scanoss.com/dependencies/pkg/config"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"testing"
-)
-
+/*
 func TestGolangProjectUrlsSearch(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
@@ -290,7 +281,6 @@ func TestGolangPkgGoDev(t *testing.T) {
 		t.Errorf("FAILED: golang_projects.getLatestPkgGoDev() No URLs returned from query")
 	}
 	fmt.Printf("Golang Url Version: %#v\n", url)
-
 	var allUrl AllUrl
 	var license License
 	var version Version
@@ -390,3 +380,4 @@ func TestGolangProjectsSearchBadSql(t *testing.T) {
 	}
 
 }
+*/

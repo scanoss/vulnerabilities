@@ -20,12 +20,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"scanoss.com/dependencies/pkg/cmd"
+
+	"scanoss.com/vulnerabilities/pkg/cmd"
 )
 
 // main starts the gRPC Dependency Service
 func main() {
-	// Launch the Dependency Server Service
+	// Launch the Vulnerabilities Server Service
 	if err := cmd.RunServer(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "ERROR: Server launch error: %v\n", err)
 		os.Exit(1)

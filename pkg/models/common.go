@@ -21,9 +21,10 @@ package models
 import (
 	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"io/ioutil"
-	zlog "scanoss.com/dependencies/pkg/logger"
+
+	"github.com/jmoiron/sqlx"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 // loadSqlData Load the specified SQL files into the supplied DB

@@ -17,14 +17,10 @@
 package models
 
 import (
-	"context"
-	"fmt"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"testing"
 )
 
+/*
 func TestMines(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
@@ -111,3 +107,4 @@ func TestMinesBadSql(t *testing.T) {
 		t.Errorf("mines.GetMineIdByPurlType() found for %v = %v", purlType, mineIds)
 	}
 }
+*/

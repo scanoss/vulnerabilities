@@ -20,10 +20,8 @@ package models
 
 import (
 	"context"
-	"errors"
-	"fmt"
+
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/dependencies/pkg/logger"
 )
 
 type projectModel struct {
@@ -44,6 +42,7 @@ func NewProjectModel(ctx context.Context, conn *sqlx.Conn) *projectModel {
 	return &projectModel{ctx: ctx, conn: conn}
 }
 
+/*
 // GetProjectsByPurlName searches the projects' table for details about Purl Name and Type
 func (m *projectModel) GetProjectsByPurlName(purlName string, purlType string) ([]Project, error) {
 	if len(purlName) == 0 {
@@ -100,3 +99,4 @@ func (m *projectModel) GetProjectByPurlName(purlName string, mineId int32) (Proj
 	}
 	return project, nil
 }
+*/

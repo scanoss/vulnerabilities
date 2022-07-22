@@ -20,13 +20,9 @@ package models
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
-	"github.com/jmoiron/sqlx"
 	"regexp"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type licenseModel struct {
@@ -52,6 +48,7 @@ func NewLicenseModel(ctx context.Context, conn *sqlx.Conn) *licenseModel {
 	return &licenseModel{ctx: ctx, conn: conn}
 }
 
+/*
 // GetLicenseById retrieves license data by the given row ID
 func (m *licenseModel) GetLicenseById(id int32) (License, error) {
 	if id < 0 {
@@ -136,3 +133,4 @@ func CleanseLicenseName(name string) (string, error) {
 	}
 	return "", nil // empty string, so just return it.
 }
+*/

@@ -23,8 +23,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/dependencies/pkg/logger"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 type versionModel struct {

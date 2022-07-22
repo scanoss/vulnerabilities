@@ -20,10 +20,8 @@ package models
 
 import (
 	"context"
-	"errors"
-	"fmt"
+
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/dependencies/pkg/logger"
 )
 
 type mineModel struct {
@@ -42,6 +40,7 @@ func NewMineModel(ctx context.Context, conn *sqlx.Conn) *mineModel {
 	return &mineModel{ctx: ctx, conn: conn}
 }
 
+/*
 // GetMineIdsByPurlType retreives a list of the Purl Type IDs associated with the given Purl Type (string)
 func (m *mineModel) GetMineIdsByPurlType(purlType string) ([]int32, error) {
 	if len(purlType) == 0 {
@@ -66,3 +65,4 @@ func (m *mineModel) GetMineIdsByPurlType(purlType string) ([]int32, error) {
 	zlog.S.Error("No entries found in the mines table.")
 	return nil, errors.New("no entry in mines table")
 }
+*/

@@ -16,15 +16,7 @@
 
 package models
 
-import (
-	"context"
-	"fmt"
-	"github.com/jmoiron/sqlx"
-	"reflect"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"testing"
-)
-
+/*
 func TestLicensesSearch(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
@@ -283,3 +275,4 @@ func TestCleanseLicenseName(t *testing.T) {
 		})
 	}
 }
+*/

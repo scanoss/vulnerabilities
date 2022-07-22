@@ -1,6 +1,6 @@
 {
   "App": {
-    "Name": "Dependency Service",
+    "Name": "Vulnerabilities Service",
     "Debug": true,
     "Mode":  "dev"
   },

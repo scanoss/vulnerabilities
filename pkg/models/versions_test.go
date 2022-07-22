@@ -19,9 +19,10 @@ package models
 import (
 	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/dependencies/pkg/logger"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 func TestVersionsSearch(t *testing.T) {

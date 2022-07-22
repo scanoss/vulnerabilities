@@ -21,18 +21,19 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap/zapcore"
-	"os"
-	myconfig "scanoss.com/dependencies/pkg/config"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"scanoss.com/dependencies/pkg/protocol/grpc"
-	"scanoss.com/dependencies/pkg/service"
-	"strings"
-	"time"
+	myconfig "scanoss.com/vulnerabilities/pkg/config"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	"scanoss.com/vulnerabilities/pkg/protocol/grpc"
+	"scanoss.com/vulnerabilities/pkg/service"
 )
 
 //go:generate bash ../../get_version.sh
@@ -103,7 +104,7 @@ func RunServer() error {
 		}
 	}
 	defer zlog.SyncZap()
-	zlog.S.Infof("Starting SCANOSS Dependency Service: %v", strings.TrimSpace(version))
+	zlog.S.Infof("Starting SCANOSS Vulnerability Service: %v", strings.TrimSpace(version))
 	// Setup database connection pool
 	var dsn string
 	if len(cfg.Database.Dsn) > 0 {
@@ -133,7 +134,7 @@ func RunServer() error {
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 	defer closeDbConnection(db)
-	v2API := service.NewDependencyServer(db, cfg)
+	v2API := service.NewVDependencyServer(db, cfg)
 	ctx := context.Background()
 	return grpc.RunServer(ctx, v2API, cfg.App.Port)
 }

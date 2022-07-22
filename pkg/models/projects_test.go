@@ -16,14 +16,7 @@
 
 package models
 
-import (
-	"context"
-	"fmt"
-	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/dependencies/pkg/logger"
-	"testing"
-)
-
+/*
 func TestProjectsSearch(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
@@ -139,3 +132,4 @@ func TestProjectsSearchBadSql(t *testing.T) {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
 }
+*/
