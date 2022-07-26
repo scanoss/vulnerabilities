@@ -79,7 +79,7 @@ func closeDbConnection(db *sqlx.DB) {
 	}
 }
 
-// RunServer runs the gRPC Dependency Server
+// RunServer runs the gRPC Vulnerabilities Server
 func RunServer() error {
 	// Load command line options and config
 	cfg, err := getConfig()
@@ -119,7 +119,7 @@ func RunServer() error {
 			cfg.Database.Schema,
 			cfg.Database.SslMode)
 	}
-	zlog.S.Debug("Connecting to Database...")
+	zlog.S.Debug("Connecting to Database... %s,%s", cfg.Database.User, cfg.Database.Passwd)
 	db, err := sqlx.Open(cfg.Database.Driver, dsn)
 	if err != nil {
 		zlog.S.Errorf("Failed to open database: %v", err)

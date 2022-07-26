@@ -37,6 +37,7 @@ func RunServer(ctx context.Context, v2API pb.VulnerabilitiesServer, port string)
 	if err != nil {
 		return err
 	}
+
 	// register service
 	server := grpc.NewServer()
 	pb.RegisterVulnerabilitiesServer(server, v2API)

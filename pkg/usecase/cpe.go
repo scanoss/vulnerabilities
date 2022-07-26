@@ -28,22 +28,22 @@ import (
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
-type VulnerabilityUseCase struct {
-	ctx       context.Context
-	conn      *sqlx.Conn
-	vulnsPurl *models.VulnsForPurlModel
+type CpeUseCase struct {
+	ctx     context.Context
+	conn    *sqlx.Conn
+	cpePurl *models.CpePurlModel
 }
 
-// NewVulnerabilities creates a new instance of the vulnerability Use Case
-func NewVulnerabilities(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig) *VulnerabilityUseCase {
-	return &VulnerabilityUseCase{ctx: ctx, conn: conn, vulnsPurl: models.NewVulnsForPurlModel(ctx, conn, models.NewProjectModel(ctx, conn),
+// NewCpe creates a new instance of the vulnerability Use Case
+func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig) *CpeUseCase {
+	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn, models.NewProjectModel(ctx, conn),
 		models.NewGolangProjectModel(ctx, conn, config),
 	),
 	}
 }
 
 // GetVulnerabilities takes the Vulnerability Input request, searches for cpes, creates ranges and returns a Vulnerability Output struct
-func (d VulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityInput) (dtos.VulnerabilityOutput, error) {
+func (d CpeUseCase) GetCPE2(request dtos.VulnerabilityInput) (dtos.VulnerabilityOutput, error) {
 
 	var vulnOutputs []dtos.VulnerabilityPurlOutput
 
@@ -56,10 +56,9 @@ func (d VulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityInput
 		//VulnerabilitiesOutput
 		var item dtos.VulnerabilityPurlOutput
 		item.Purl = purl.Purl
-		//llamo a la query
-		vulnPurls, err := d.vulnsPurl.GetVulnsByPurlName(purl.Purl)
-		//EN ESTE PUNTO HAY QUE HACER MAGIA Y SACAR RANGOS, CONSULTAR REQUIREMENTS, ETC
-		zlog.S.Debugf("Output vulnerabiliies: %v", vulnPurls)
+		//lamo a la query
+		cpePurl, err := d.cpePurl.GetCpesByPurlName(purl.Purl)
+		zlog.S.Debugf("Output vulnerabiliies: %v", cpePurl)
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
 			problems = true
@@ -67,15 +66,15 @@ func (d VulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityInput
 			// TODO add a placeholder in the response?
 		}
 		//Para todos los resultados de la query
-		for res := range vulnPurls {
+		/*	for res := range cpePurl {
 
 			var vulnerabilitiesForThisPurl dtos.VulnerabilitiesOutput
-			vulnerabilitiesForThisPurl.Cve = vulnPurls[res].Cve
-			vulnerabilitiesForThisPurl.Severity = vulnPurls[res].Severity
-			vulnerabilitiesForThisPurl.Summary = vulnPurls[res].Summary
+			vulnerabilitiesForThisPurl.Cve = cpePurl[res].Cve
+			vulnerabilitiesForThisPurl.Severity = cpePurl[res].Severity
+			vulnerabilitiesForThisPurl.Summary = cpePurl[res].Summary
 
 			item.Vulnerabilities = append(item.Vulnerabilities, vulnerabilitiesForThisPurl)
-		}
+		}*/
 
 		vulnOutputs = append(vulnOutputs, item)
 	}
@@ -88,42 +87,40 @@ func (d VulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityInput
 	return dtos.VulnerabilityOutput{Purls: vulnOutputs}, nil
 }
 
-/*
- func (d VulnerabilityUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, error) {
+func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, error) {
 
-	 var out []dtos.CpePurlOutput
-	 var problems = false
-	 for _, purl := range request.Purls {
-		 if len(purl.Purl) == 0 {
-			 zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
-			 continue
-		 }
-		 //VulnerabilitiesOutput
-		 var item dtos.CpePurlOutput
-		 item.Purl = purl.Purl
-		 //lamo a la query
-		 cpePurl, err := d.cpePurl.GetCpesByPurlName(purl.Purl)
-		 for i := range cpePurl {
-			 item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
-		 }
-		 zlog.S.Debugf("Output Vulnerabilities: %v", cpePurl)
-		 if err != nil {
-			 zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
-			 problems = true
-			 continue
-			 // TODO add a placeholder in the response?
-		 }
+	var out []dtos.CpePurlOutput
+	var problems = false
+	for _, purl := range request.Purls {
+		if len(purl.Purl) == 0 {
+			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
+			continue
+		}
+		//VulnerabilitiesOutput
+		var item dtos.CpePurlOutput
+		item.Purl = purl.Purl
+		//lamo a la query
+		cpePurl, err := d.cpePurl.GetCpesByPurlName(purl.Purl)
+		for i := range cpePurl {
+			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
+		}
+		zlog.S.Debugf("Output Vulnerabilities: %v", cpePurl)
+		if err != nil {
+			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
+			problems = true
+			continue
+			// TODO add a placeholder in the response?
+		}
 
-		 //cpeItem.
-		 out = append(out, item)
+		//cpeItem.
+		out = append(out, item)
 
-	 }
+	}
 
-	 if problems {
-		 zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", request)
-		 return dtos.CpeOutput{}, errors.New("encountered issues while processing vulnerabilities")
-	 }
+	if problems {
+		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", request)
+		return dtos.CpeOutput{}, errors.New("encountered issues while processing vulnerabilities")
+	}
 
-	 return dtos.CpeOutput{Purls: out}, nil
- }
-*/
+	return dtos.CpeOutput{Purls: out}, nil
+}
