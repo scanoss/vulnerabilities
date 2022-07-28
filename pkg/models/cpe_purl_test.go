@@ -17,40 +17,45 @@
 package models
 
 import (
-	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	"context"
+	"fmt"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
-func TestDbLoad(t *testing.T) {
-
-	// TODO Initialize logger 'beforeEach' test
+func TestGetCpesByPurlName(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
-
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
+	}
+	defer zlog.SyncZap()
 	db, err := sqlx.Connect("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseDB(db)
-	err = loadSqlData(db, nil, nil, "./tests/mines.sql")
+	conn, err := db.Connx(ctx) // Get a connection from the pool
 	if err != nil {
-		t.Errorf("failed to load SQL test data: %v", err)
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	err = LoadTestSqlData(db, nil, nil)
+	defer CloseConn(conn)
+	err = LoadTestSqlData(db, ctx, conn)
 	if err != nil {
-		t.Errorf("failed to load SQL test data: %v", err)
+		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	err = loadSqlData(db, nil, nil, "./tests/does-not-exist.sql")
-	if err == nil {
-		t.Errorf("did not fail to load SQL test data")
+
+	cpeModel := NewCpePurlModel(ctx, conn)
+
+	fmt.Printf("Searching cpes for purl: %v\n", "pkg:apache/sling")
+	cpes, err := cpeModel.GetCpesByPurlName("pkg:apache/sling")
+	if err != nil {
+		t.Errorf("cpeModel.GetCpesByPurlName() error = %v", err)
 	}
-	err = loadTestSqlDataFiles(db, nil, nil, []string{"./tests/does-not-exist.sql"})
-	if err == nil {
-		t.Errorf("did not fail to load SQL test data")
+	if len(cpes) == 0 {
+		t.Errorf("versions.GetVersionByName() No version returned from query")
 	}
-	err = loadSqlData(db, nil, nil, "./tests/bad_sql.sql")
-	if err == nil {
-		t.Errorf("did not fail to load SQL test data")
-	}
+	fmt.Printf("Cpes: %#v\n", cpes)
 }

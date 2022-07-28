@@ -27,10 +27,8 @@ import (
 )
 
 type CpePurlModel struct {
-	ctx        context.Context
-	conn       *sqlx.Conn
-	project    *projectModel
-	golangProj *GolangProjects
+	ctx  context.Context
+	conn *sqlx.Conn
 }
 
 type CpePurl struct {
@@ -40,8 +38,8 @@ type CpePurl struct {
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model
-func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn, project *projectModel, golangProj *GolangProjects) *CpePurlModel {
-	return &CpePurlModel{ctx: ctx, conn: conn, project: project, golangProj: golangProj}
+func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
+	return &CpePurlModel{ctx: ctx, conn: conn}
 }
 
 // GetCpeByPurlString searches for CPE details of the specified Purl string (and optional requirement)
@@ -83,11 +81,13 @@ func (m *CpePurlModel) GetCpesByPurlName(purlName string) ([]CpePurl, error) {
 
 	var allCpes []CpePurl
 	err := m.conn.SelectContext(m.ctx, &allCpes,
-
-		"SELECT cc.cpe, cc.vuln_id "+
-			"FROM short_cpe_purl scp, cpe_cve cc "+
-			"WHERE scp.purl = $1 and cc.cpe like concat (scp.short_cpe,'%') order by (cc.vuln_id)",
+		"SELECT cpe.cpe"+
+			" FROM cpe "+
+			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
+			" LEFT JOIN purl p ON scp.purl_id = p.id"+
+			" WHERE p.purl = $1;",
 		purlName)
+
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpu for %v - %v: %v", purlName, err)
 		return []CpePurl{}, fmt.Errorf("failed to query the table: %v", err)
