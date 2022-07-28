@@ -26,37 +26,39 @@ import (
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
 
-type CpePurlModel struct {
+type VulnsForPurlModel struct {
 	ctx  context.Context
 	conn *sqlx.Conn
 }
 
-type CpePurl struct {
-	Cpe     string `db:"cpe"`
-	Version string `db:"version_name"`
-	Purl    string `db:"purl"`
-	IsMain  string `db:"int"`
+type VulnsForPurl struct {
+	Cve      string `db:"cve"`
+	Url      string `db:"url"`
+	Summary  string `db:"summary"`
+	Severity string `db:"severity"`
+	Reported string `db:"reported"`
+	Patched  string `db:"patched"`
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model
-func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
-	return &CpePurlModel{ctx: ctx, conn: conn}
+func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlModel {
+	return &VulnsForPurlModel{ctx: ctx, conn: conn}
 }
 
 // GetCpeByPurlString searches for CPE details of the specified Purl string (and optional requirement)
 // Lets do all checks before querying db and if all ok, then do magic
-func (m *CpePurlModel) GetCpeByPurlString(purlString, purlReq string) ([]CpePurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlString(purlString, purlReq string) ([]VulnsForPurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
-		return []CpePurl{}, errors.New("please specify a valid Purl String to query")
+		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
 	}
 	purl, err := utils.PurlFromString(purlString)
 	if err != nil {
-		return []CpePurl{}, err
+		return []VulnsForPurl{}, err
 	}
 	purlName, err := utils.PurlNameFromString(purlString) // Make sure we just have the bare minimum for a Purl Name
 	if err != nil {
-		return []CpePurl{}, err
+		return []VulnsForPurl{}, err
 	}
 	if len(purl.Version) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
 		ver := utils.GetVersionFromReq(purlReq)
@@ -70,38 +72,40 @@ func (m *CpePurlModel) GetCpeByPurlString(purlString, purlReq string) ([]CpePurl
 		// TODO  Implement ,.GetCpeByPurlNameType
 		//return m.GetUrlsByPurlNameTypeVersion(purlName, purl.Type, purl.Version)
 	}
-	return m.GetCpesByPurlName(purlName)
+	return m.GetVulnsByPurlName(purlName)
 }
 
-// GetCpesByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement)
-func (m *CpePurlModel) GetCpesByPurlName(purlName string) ([]CpePurl, error) {
+// GetUrlsByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement)
+func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
-		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
+		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
-	var allCpes []CpePurl
+	var vulns []VulnsForPurl
 
-	err := m.conn.SelectContext(m.ctx, &allCpes,
-		"SELECT cpe.cpe, v.version_name"+
-			" FROM cpe "+
-			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
-			" LEFT JOIN purl p ON scp.purl_id = p.id"+
-			" LEFT JOIN versions v ON cpe.version_id = v.id"+
-			" WHERE p.purl = $1;",
-		purlName)
+	err := m.conn.SelectContext(m.ctx, &vulns,
+		"SELECT cpe as summary, vuln_id as cve, severity "+
+			"FROM (SELECT scp.purl, scp.short_cpe "+
+			"FROM short_cpe_purl scp "+
+			"WHERE purl = $1) scpe "+
+			"INNER JOIN "+
+			"(SELECT c.cpe, c.vuln_id, vli.severity "+
+			"FROM cpe_cve c "+
+			"LEFT JOIN vuln_info vli on c.vuln_id = vli.vuln_id) fcpe "+
+			"ON fcpe.cpe LIKE CONCAT(scpe.short_cpe, '%')", purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %v - %v: %v", purlName, err)
-		return []CpePurl{}, fmt.Errorf("failed to query the table: %v", err)
+		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
 	}
-	zlog.S.Debugf("Found %v results for %v.", len(allCpes), purlName)
-
-	return allCpes, nil
+	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
+	// Pick one URL to return (checking for license details also)
+	return vulns, nil
 }
 
-// GetCPEByPurlNameTypeVersion searches for component details of the specified Purl Name/Type and version
-func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([]CpePurl, error) {
+// GetUrlsByPurlNameTypeVersion searches for component details of the specified Purl Name/Type and version
+/*func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([]CpePurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
@@ -113,12 +117,9 @@ func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([
 	}
 	var cpuPurls []CpePurl
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT cpe.cpe, v.version_name "+
-			" FROM cpe"+
-			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
-			" LEFT JOIN purl p ON scp.purl_id = p.id"+
-			" LEFT JOIN versions v ON cpe.version_id = v.id"+
-			" WHERE p.purl = $1 AND v.version_name=$2;",
+		"SELECT cc.cpe, cc.vuln_id "+
+			"FROM short_cpe_purl scp, cpe_cve cc "+
+			"WHERE scp.purl = $1 and cc.cpe like concat (scp.short_cpe,'%') order by (cc.vuln_id)",
 		purlName, purlVersion)
 	if err != nil {
 		zlog.S.Errorf("Failed to query all urls table for %v - %v: %v", purlName, err)
@@ -127,4 +128,4 @@ func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([
 	zlog.S.Debugf("Found %v results for %v, %v.", len(cpuPurls), purlName)
 	// Pick one URL to return (checking for license details also)
 	return cpuPurls, nil
-}
+}*/
