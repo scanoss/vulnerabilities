@@ -58,4 +58,15 @@ func TestGetCpesByPurlName(t *testing.T) {
 		t.Errorf("versions.GetVersionByName() No version returned from query")
 	}
 	fmt.Printf("Cpes: %#v\n", cpes)
+
+	fmt.Printf("Searching cpes for purl: %v\n", "pkg:apache/sling")
+	cpes, err = cpeModel.GetCpesByPurlNameVersion("pkg:apache/sling", "2.2.0")
+	if err != nil {
+		t.Errorf("cpeModel.GetCpesByPurlName() error = %v", err)
+	}
+	if len(cpes) == 0 {
+		t.Errorf("versions.GetVersionByName() No version returned from query")
+	}
+	fmt.Printf("Cpes: %#v\n", cpes)
+
 }

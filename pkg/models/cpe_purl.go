@@ -32,9 +32,10 @@ type CpePurlModel struct {
 }
 
 type CpePurl struct {
-	Cpe    string `db:"cpe"`
-	Purl   string `db:"purl"`
-	IsMain string `db:"int"`
+	Cpe     string `db:"cpe"`
+	Version string `db:"version_name"`
+	Purl    string `db:"purl"`
+	IsMain  string `db:"int"`
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model
@@ -81,10 +82,11 @@ func (m *CpePurlModel) GetCpesByPurlName(purlName string) ([]CpePurl, error) {
 
 	var allCpes []CpePurl
 	err := m.conn.SelectContext(m.ctx, &allCpes,
-		"SELECT cpe.cpe"+
+		"SELECT cpe.cpe, v.version_name"+
 			" FROM cpe "+
 			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
 			" LEFT JOIN purl p ON scp.purl_id = p.id"+
+			" LEFT JOIN versions v ON cpe.version_id = v.id"+
 			" WHERE p.purl = $1;",
 		purlName)
 
@@ -110,9 +112,12 @@ func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([
 	}
 	var cpuPurls []CpePurl
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT cc.cpe, cc.vuln_id "+
-			"FROM short_cpe_purl scp, cpe_cve cc "+
-			"WHERE scp.purl = $1 and cc.cpe like concat (scp.short_cpe,'%') order by (cc.vuln_id)",
+		"SELECT cpe.cpe, v.version_name "+
+			" FROM cpe"+
+			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
+			" LEFT JOIN purl p ON scp.purl_id = p.id"+
+			" LEFT JOIN versions v ON cpe.version_id = v.id"+
+			" WHERE p.purl = $1 AND v.version_name=$2;",
 		purlName, purlVersion)
 	if err != nil {
 		zlog.S.Errorf("Failed to query all urls table for %v - %v: %v", purlName, err)
