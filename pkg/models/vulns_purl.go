@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
@@ -38,6 +39,9 @@ type VulnsForPurl struct {
 	Severity string `db:"severity"`
 	Reported string `db:"reported"`
 	Patched  string `db:"patched"`
+}
+type OnlyPurl struct {
+	Purl string `db:"purl"`
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model
@@ -84,19 +88,30 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 
 	var vulns []VulnsForPurl
 
+	//zlog.S.Debugf("ctx %v", m.ctx)
+	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"SELECT cpe as summary, vuln_id as cve, severity "+
-			"FROM (SELECT scp.purl, scp.short_cpe "+
-			"FROM short_cpe_purl scp "+
-			"WHERE purl = $1) scpe "+
-			"INNER JOIN "+
-			"(SELECT c.cpe, c.vuln_id, vli.severity "+
-			"FROM cpe_cve c "+
-			"LEFT JOIN vuln_info vli on c.vuln_id = vli.vuln_id) fcpe "+
-			"ON fcpe.cpe LIKE CONCAT(scpe.short_cpe, '%')", purlName)
+		"select  cve, severity from t_purl tpurl "+
+			"left join t_short_cpe_purl tscp on id = purl_id "+
+			"right join t_cpe tc on tc.short_cpe_id =tscp.short_cpe_id "+
+			"left join t_cpe_cve tcc on tc.id =tcc.cpe_id "+
+			"left join t_cve tcve on tcc.cve_id =tcve.id "+
+			"where tpurl.purl  = $1 and cve is not null limit 100000", purlName)
 
+	/*	"SELECT cpe as summary, vuln_id as cve, severity "+
+		"FROM (SELECT scp.purl, scp.short_cpe "+
+		"FROM short_cpe_purl scp "+
+		"WHERE purl = $1) scpe "+
+		"INNER JOIN "+
+		"(SELECT c.cpe, c.vuln_id, vli.severity "+
+		"FROM cpe_cve c "+
+		"LEFT JOIN vuln_info vli on c.vuln_id = vli.vuln_id) fcpe "+
+		"ON fcpe.cpe LIKE CONCAT(scpe.short_cpe, '%')"*/
+	/*"select  tcve.cve as cve, tcve.severity as severity from t_purl tpurl ,t_short_cpe_purl tscp, t_cpe tc, t_cpe_cve tcpecve ,t_cve tcve "+
+	"where  tpurl.purl ='pkg:github/torvalds/linux' and tpurl.id =tscp.purl_id and tscp.short_cpe_id =tc.short_cpe_id and tcpecve.cpe_id =tc.id and tcve.id =tcpecve.cve_id")
+	*/
 	if err != nil {
-		zlog.S.Errorf("Failed to query short_cpe for %v - %v: %v", purlName, err)
+		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
 	}
 	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)

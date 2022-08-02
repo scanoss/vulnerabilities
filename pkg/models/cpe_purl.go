@@ -81,14 +81,16 @@ func (m *CpePurlModel) GetCpesByPurlName(purlName string) ([]CpePurl, error) {
 	}
 
 	var allCpes []CpePurl
-
+	zlog.S.Debugf("ctx %v", m.ctx)
 	err := m.conn.SelectContext(m.ctx, &allCpes,
-		"SELECT cpe.cpe, v.version_name"+
-			" FROM cpe "+
-			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
-			" LEFT JOIN purl p ON scp.purl_id = p.id"+
-			" LEFT JOIN versions v ON cpe.version_id = v.id"+
-			" WHERE p.purl = $1;",
+		"select  tc.cpe from t_purl tp ,t_short_cpe_purl tscp, t_cpe tc "+
+			"where  tp.id =tscp.purl_id and tc.short_cpe_id =tscp.purl_id and tp.purl = $1 ",
+		/*"SELECT cpe.cpe, v.version_name"+
+		" FROM cpe "+
+		" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
+		" LEFT JOIN purl p ON scp.purl_id = p.id"+
+		" LEFT JOIN versions v ON cpe.version_id = v.id"+
+		" WHERE p.purl = $1;",*/
 		purlName)
 
 	if err != nil {
