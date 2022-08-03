@@ -1,0 +1,14 @@
+{
+  "App": {
+    "Name": "Vulnerabilities Service",
+    "Debug": true,
+    "Mode":  "dev"
+  },
+  "Database": {
+    "Driver": "postgres",
+    "Host":   "localhost",
+    "User":   "scanoss",
+    "Passwd": "secret123!",
+    "Schema": "scanoss"
+  }
+}
