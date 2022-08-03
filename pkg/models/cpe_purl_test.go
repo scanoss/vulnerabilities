@@ -55,7 +55,7 @@ func TestGetCpesByPurlName(t *testing.T) {
 		t.Errorf("cpeModel.GetCpesByPurlName() error = %v", err)
 	}
 	if len(cpes) == 0 {
-		t.Errorf("versions.GetVersionByName() No version returned from query")
+		t.Errorf("cpeModel.GetCpesByPurlName() No version returned from query")
 	}
 	fmt.Printf("Cpes: %#v\n", cpes)
 

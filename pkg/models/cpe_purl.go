@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
@@ -83,18 +82,13 @@ func (m *CpePurlModel) GetCpesByPurlName(purlName string) ([]CpePurl, error) {
 	var allCpes []CpePurl
 	zlog.S.Debugf("ctx %v", m.ctx)
 	err := m.conn.SelectContext(m.ctx, &allCpes,
-		"select  tc.cpe from t_purl tp ,t_short_cpe_purl tscp, t_cpe tc "+
-			"where  tp.id =tscp.purl_id and tc.short_cpe_id =tscp.purl_id and tp.purl = $1 ",
-		/*"SELECT cpe.cpe, v.version_name"+
-		" FROM cpe "+
-		" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
-		" LEFT JOIN purl p ON scp.purl_id = p.id"+
-		" LEFT JOIN versions v ON cpe.version_id = v.id"+
-		" WHERE p.purl = $1;",*/
+		"SELECT tc.cpe "+
+			"FROM t_purl tp ,t_short_cpe_purl tscp, t_cpe tc "+
+			"WHERE  tp.id = tscp.purl_id AND tc.short_cpe_id = tscp.short_cpe_id AND tp.purl = $1 ",
 		purlName)
 
 	if err != nil {
-		zlog.S.Errorf("Failed to query short_cpe for %v - %v: %v", purlName, err)
+		zlog.S.Errorf("Failed to query Cpe for %v - %v", purlName, err)
 		return []CpePurl{}, fmt.Errorf("failed to query the table: %v", err)
 	}
 	zlog.S.Debugf("Found %v results for %v.", len(allCpes), purlName)
@@ -115,18 +109,18 @@ func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([
 	}
 	var cpuPurls []CpePurl
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT cpe.cpe, v.version_name "+
-			" FROM cpe"+
-			" LEFT JOIN short_cpe_purl scp ON cpe.short_cpe_id = scp.short_cpe_id"+
-			" LEFT JOIN purl p ON scp.purl_id = p.id"+
-			" LEFT JOIN versions v ON cpe.version_id = v.id"+
+		"SELECT tc.cpe, v.version_name "+
+			" FROM t_cpe tc"+
+			" LEFT JOIN t_short_cpe_purl scp ON tc.short_cpe_id = scp.short_cpe_id"+
+			" LEFT JOIN t_purl p ON scp.purl_id = p.id"+
+			" LEFT JOIN versions v ON tc.version_id = v.id"+
 			" WHERE p.purl = $1 AND v.version_name=$2;",
 		purlName, purlVersion)
 	if err != nil {
-		zlog.S.Errorf("Failed to query all urls table for %v - %v: %v", purlName, err)
+		zlog.S.Errorf("Failed to query all urls table for %v - %v", purlName, err)
 		return []CpePurl{}, fmt.Errorf("failed to query the all urls table: %v", err)
 	}
-	zlog.S.Debugf("Found %v results for %v, %v.", len(cpuPurls), purlName)
+	zlog.S.Debugf("Found %v results for %v", len(cpuPurls), purlName)
 	// Pick one URL to return (checking for license details also)
 	return cpuPurls, nil
 }
