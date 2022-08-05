@@ -28,7 +28,8 @@ import (
 
 var pkgRegex = regexp.MustCompile(`^pkg:(?P<type>\w+)/(?P<name>.+)$`) // regex to parse purl name from purl string
 var typeRegex = regexp.MustCompile(`^(npm|nuget)$`)                   // regex to parse purl types that should not be lower cased
-var vRegex = regexp.MustCompile(`^(=|==|)(?P<name>\w+\S+)$`)          // regex to parse purl name from purl string
+var vRegex = regexp.MustCompile(`^(=|==|)(?P<name>\w+\S+)$`)          // regex to extract version from requirement field
+var fromVRegex = regexp.MustCompile(`(@|\?|#).+`)
 
 // PurlFromString takes an input Purl string and returns a decomposed structure of all the elements
 func PurlFromString(purlString string) (packageurl.PackageURL, error) {
@@ -62,6 +63,12 @@ func PurlNameFromString(purlString string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no purl name found in '%v'", purlString)
+}
+
+// PurlRemoveFromVersionComponent From a purlString removes everything that proceds @
+// See purl specs scheme:type/namespace/name@version?qualifiers#subpath
+func PurlRemoveFromVersionComponent(purlString string) string {
+	return fromVRegex.ReplaceAllString(purlString, "")
 }
 
 // ConvertPurlString takes an input PURL and checks to see if anything needs to be modified before search the KB

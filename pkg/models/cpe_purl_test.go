@@ -19,6 +19,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -50,7 +51,7 @@ func TestGetCpesByPurlName(t *testing.T) {
 	cpeModel := NewCpePurlModel(ctx, conn)
 
 	fmt.Printf("Searching cpes for purl: %v\n", "pkg:apache/sling")
-	cpes, err := cpeModel.GetCpesByPurlName("pkg:apache/sling")
+	cpes, err := cpeModel.GetCpesByPurlName("pkg:apache/sling", "")
 	if err != nil {
 		t.Errorf("cpeModel.GetCpesByPurlName() error = %v", err)
 	}
@@ -69,4 +70,51 @@ func TestGetCpesByPurlName(t *testing.T) {
 	}
 	fmt.Printf("Cpes: %#v\n", cpes)
 
+}
+
+func TestFilterCpesByRequirement(t *testing.T) {
+
+	err := zlog.NewSugaredDevLogger()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
+	}
+
+	tests := map[string]struct {
+		req           string
+		cpes          []CpePurl
+		want          []CpePurl
+		expectedError bool
+	}{
+		"Requirement equals to version": {
+			req: "=2.2.0",
+			cpes: []CpePurl{
+				{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"},
+				{Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*", Version: "4.35", SemVer: "4.35.0"},
+				{Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"},
+			},
+			want: []CpePurl{
+				{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"},
+			},
+			expectedError: false,
+		},
+		"Requirement not matching the cpe list": {
+			req: "=8.0.0",
+			cpes: []CpePurl{
+				{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"},
+				{Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*", Version: "4.35", SemVer: "4.35.0"},
+				{Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"},
+			},
+			want:          []CpePurl(nil),
+			expectedError: false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, _ := FilterCpesByRequirement(tc.cpes, tc.req)
+			if !reflect.DeepEqual(tc.want, got) {
+				t.Fatalf("expected: %#v, got: %#v", tc.want, got)
+			}
+		})
+	}
 }
