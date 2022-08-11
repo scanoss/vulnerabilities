@@ -3,6 +3,7 @@ module scanoss.com/vulnerabilities
 go 1.17
 
 require (
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/golobby/config/v3 v3.4.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.6
@@ -29,8 +30,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-//replace github.com/scanoss/papi => ../papi
 
 // Details of how to use the "replace" command for local development
 // https://github.com/golang/go/wiki/Modules#when-should-i-use-the-replace-directive

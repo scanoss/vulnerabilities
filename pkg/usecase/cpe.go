@@ -39,51 +39,6 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig)
 	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn)}
 }
 
-// GetVulnerabilities takes the Vulnerability Input request, searches for cpes, creates ranges and returns a Vulnerability Output struct
-func (d CpeUseCase) GetCPE2(request dtos.VulnerabilityInput) (dtos.VulnerabilityOutput, error) {
-
-	var vulnOutputs []dtos.VulnerabilityPurlOutput
-
-	var problems = false
-	for _, purl := range request.Purls {
-		if len(purl.Purl) == 0 {
-			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
-			continue
-		}
-		//VulnerabilitiesOutput
-		var item dtos.VulnerabilityPurlOutput
-		item.Purl = purl.Purl
-		//lamo a la query
-		cpePurl, err := d.cpePurl.GetCpesByPurlName(purl.Purl)
-		zlog.S.Debugf("Output vulnerabiliies: %v", cpePurl)
-		if err != nil {
-			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
-			problems = true
-			continue
-			// TODO add a placeholder in the response?
-		}
-		//Para todos los resultados de la query
-		/*	for res := range cpePurl {
-
-			var vulnerabilitiesForThisPurl dtos.VulnerabilitiesOutput
-			vulnerabilitiesForThisPurl.Cve = cpePurl[res].Cve
-			vulnerabilitiesForThisPurl.Severity = cpePurl[res].Severity
-			vulnerabilitiesForThisPurl.Summary = cpePurl[res].Summary
-
-			item.Vulnerabilities = append(item.Vulnerabilities, vulnerabilitiesForThisPurl)
-		}*/
-
-		vulnOutputs = append(vulnOutputs, item)
-	}
-
-	if problems {
-		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", request)
-		return dtos.VulnerabilityOutput{}, errors.New("encountered issues while processing vulnerabilities")
-	}
-
-	return dtos.VulnerabilityOutput{Purls: vulnOutputs}, nil
-}
-
 func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, error) {
 
 	var out []dtos.CpePurlOutput
@@ -97,7 +52,7 @@ func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, er
 		var item dtos.CpePurlOutput
 		item.Purl = purl.Purl
 		//lamo a la query
-		cpePurl, err := d.cpePurl.GetCpesByPurlName(purl.Purl)
+		cpePurl, err := d.cpePurl.GetCpeByPurlString(purl.Purl, purl.Requirement)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}
@@ -108,10 +63,7 @@ func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, er
 			continue
 			// TODO add a placeholder in the response?
 		}
-
-		//cpeItem.
 		out = append(out, item)
-
 	}
 
 	if problems {
