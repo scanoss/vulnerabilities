@@ -35,11 +35,12 @@ type VulnsForPurlModel struct {
 type VulnsForPurl struct {
 	Cve      string `db:"cve"`
 	Url      string `db:"url"`
+	Version  string `db:"version_name"`
+	Semver   string `db:"semver"`
 	Summary  string `db:"summary"`
 	Severity string `db:"severity"`
-	Reported string `db:"reported"`
-	Patched  string `db:"patched"`
 }
+
 type OnlyPurl struct {
 	Purl string `db:"purl"`
 }
@@ -87,60 +88,52 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	}
 
 	var vulns []VulnsForPurl
-
-	//zlog.S.Debugf("ctx %v", m.ctx)
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select  cve, severity from t_purl tpurl "+
+		"select  cve, severity, v.version_name, v.semver "+
+			"from t_purl tpurl "+
 			"left join t_short_cpe_purl tscp on id = purl_id "+
-			"right join t_cpe tc on tc.short_cpe_id =tscp.short_cpe_id "+
-			"left join t_cpe_cve tcc on tc.id =tcc.cpe_id "+
+			"right join t_cpe tc on tc.short_cpe_id = tscp.short_cpe_id "+
+			"left join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
 			"left join t_cve tcve on tcc.cve_id =tcve.id "+
+			"left join versions v on tc.version_id = v.id "+
 			"where tpurl.purl  = $1 and cve is not null limit 100000", purlName)
 
-	/*	"SELECT cpe as summary, vuln_id as cve, severity "+
-		"FROM (SELECT scp.purl, scp.short_cpe "+
-		"FROM short_cpe_purl scp "+
-		"WHERE purl = $1) scpe "+
-		"INNER JOIN "+
-		"(SELECT c.cpe, c.vuln_id, vli.severity "+
-		"FROM cpe_cve c "+
-		"LEFT JOIN vuln_info vli on c.vuln_id = vli.vuln_id) fcpe "+
-		"ON fcpe.cpe LIKE CONCAT(scpe.short_cpe, '%')"*/
-	/*"select  tcve.cve as cve, tcve.severity as severity from t_purl tpurl ,t_short_cpe_purl tscp, t_cpe tc, t_cpe_cve tcpecve ,t_cve tcve "+
-	"where  tpurl.purl ='pkg:github/torvalds/linux' and tpurl.id =tscp.purl_id and tscp.short_cpe_id =tc.short_cpe_id and tcpecve.cpe_id =tc.id and tcve.id =tcpecve.cve_id")
-	*/
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
 	}
 	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
-	// Pick one URL to return (checking for license details also)
+
 	return vulns, nil
 }
 
-// GetUrlsByPurlNameTypeVersion searches for component details of the specified Purl Name/Type and version
-/*func (m *CpePurlModel) GetCpesByPurlNameVersion(purlName, purlVersion string) ([]CpePurl, error) {
+//  searches for component details of the specified Purl Name/Type and version
+func (m *VulnsForPurlModel) GetVulnsByPurlNameVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
-		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
+		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
 	if len(purlVersion) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Version to query")
-		return []CpePurl{}, errors.New("please specify a valid Purl Version to query")
+		return []VulnsForPurl{}, errors.New("please specify a valid Purl Version to query")
 	}
-	var cpuPurls []CpePurl
-	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT cc.cpe, cc.vuln_id "+
-			"FROM short_cpe_purl scp, cpe_cve cc "+
-			"WHERE scp.purl = $1 and cc.cpe like concat (scp.short_cpe,'%') order by (cc.vuln_id)",
+	var vulnsForPurl []VulnsForPurl
+	err := m.conn.SelectContext(m.ctx, &vulnsForPurl,
+		"select  v.version_name, v.semver,  cve, severity "+
+			"from t_purl tpurl "+
+			"left join t_short_cpe_purl tscp on tpurl.id = tscp.purl_id "+
+			"right join t_cpe tc on tc.short_cpe_id =tscp.short_cpe_id "+
+			"left join t_cpe_cve tcc on tc.id =tcc.cpe_id "+
+			"left join t_cve tcve on tcc.cve_id =tcve.id "+
+			"left join versions v on tc.version_id = v.id "+
+			"where tpurl.purl  = 'pkg:github/qos-ch/slf4j' and cve is not null limit 100000; ",
 		purlName, purlVersion)
 	if err != nil {
 		zlog.S.Errorf("Failed to query all urls table for %v - %v: %v", purlName, err)
-		return []CpePurl{}, fmt.Errorf("failed to query the all urls table: %v", err)
+		return []VulnsForPurl{}, fmt.Errorf("failed to query the all urls table: %v", err)
 	}
-	zlog.S.Debugf("Found %v results for %v, %v.", len(cpuPurls), purlName)
-	// Pick one URL to return (checking for license details also)
-	return cpuPurls, nil
-}*/
+
+	return vulnsForPurl, nil
+}
