@@ -50,36 +50,6 @@ func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlMod
 	return &VulnsForPurlModel{ctx: ctx, conn: conn}
 }
 
-// GetCpeByPurlString searches for CPE details of the specified Purl string (and optional requirement)
-// Lets do all checks before querying db and if all ok, then do magic
-func (m *VulnsForPurlModel) GetVulnsByPurlString(purlString, purlReq string) ([]VulnsForPurl, error) {
-	if len(purlString) == 0 {
-		zlog.S.Errorf("Please specify a valid Purl String to query")
-		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
-	}
-	purl, err := utils.PurlFromString(purlString)
-	if err != nil {
-		return []VulnsForPurl{}, err
-	}
-	purlName, err := utils.PurlNameFromString(purlString) // Make sure we just have the bare minimum for a Purl Name
-	if err != nil {
-		return []VulnsForPurl{}, err
-	}
-	if len(purl.Version) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
-		ver := utils.GetVersionFromReq(purlReq)
-		if len(ver) > 0 {
-			// TODO check what to do if we get a "file" requirement
-			purl.Version = ver // Switch to exact version search (faster)
-			purlReq = ""
-		}
-	}
-	if len(purl.Version) > 0 {
-		// TODO  Implement ,.GetCpeByPurlNameType
-		//return m.GetUrlsByPurlNameTypeVersion(purlName, purl.Type, purl.Version)
-	}
-	return m.GetVulnsByPurlName(purlName)
-}
-
 // GetUrlsByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement)
 func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
@@ -87,17 +57,19 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
+	purlName = utils.PurlRemoveFromVersionComponent(purlName) // Make sure we just have the bare minimum for a Purl Name
+
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select  cve, severity, v.version_name, v.semver "+
-			"from t_purl tpurl "+
-			"left join t_short_cpe_purl tscp on id = purl_id "+
-			"right join t_cpe tc on tc.short_cpe_id = tscp.short_cpe_id "+
-			"left join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
-			"left join t_cve tcve on tcc.cve_id =tcve.id "+
-			"left join versions v on tc.version_id = v.id "+
-			"where tpurl.purl  = $1 and cve is not null limit 100000", purlName)
+		"select t_cve.cve, t_cve.severity, v.semver, v.version_name "+
+			"from t_purl p "+
+			"inner join t_short_cpe_purl tscp on p.id = tscp.purl_id "+
+			"inner join t_cpe tc on tscp.short_cpe_id = tc.short_cpe_id "+
+			"inner join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
+			"inner join t_cve on t_cve.id = tcc.cve_id "+
+			"inner join versions v on tc.version_id = v.id "+
+			"where p.purl = $1;", purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
@@ -106,34 +78,4 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
 
 	return vulns, nil
-}
-
-//  searches for component details of the specified Purl Name/Type and version
-func (m *VulnsForPurlModel) GetVulnsByPurlNameVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
-	if len(purlName) == 0 {
-		zlog.S.Errorf("Please specify a valid Purl Name to query")
-		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
-	}
-
-	if len(purlVersion) == 0 {
-		zlog.S.Errorf("Please specify a valid Purl Version to query")
-		return []VulnsForPurl{}, errors.New("please specify a valid Purl Version to query")
-	}
-	var vulnsForPurl []VulnsForPurl
-	err := m.conn.SelectContext(m.ctx, &vulnsForPurl,
-		"select  v.version_name, v.semver,  cve, severity "+
-			"from t_purl tpurl "+
-			"left join t_short_cpe_purl tscp on tpurl.id = tscp.purl_id "+
-			"right join t_cpe tc on tc.short_cpe_id =tscp.short_cpe_id "+
-			"left join t_cpe_cve tcc on tc.id =tcc.cpe_id "+
-			"left join t_cve tcve on tcc.cve_id =tcve.id "+
-			"left join versions v on tc.version_id = v.id "+
-			"where tpurl.purl  = 'pkg:github/qos-ch/slf4j' and cve is not null limit 100000; ",
-		purlName, purlVersion)
-	if err != nil {
-		zlog.S.Errorf("Failed to query all urls table for %v - %v: %v", purlName, err)
-		return []VulnsForPurl{}, fmt.Errorf("failed to query the all urls table: %v", err)
-	}
-
-	return vulnsForPurl, nil
 }
