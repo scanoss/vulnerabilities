@@ -52,7 +52,7 @@ func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, er
 		var item dtos.CpePurlOutput
 		item.Purl = purl.Purl
 		//lamo a la query
-		cpePurl, err := d.cpePurl.GetCpeByPurlString(purl.Purl, purl.Requirement)
+		cpePurl, err := d.cpePurl.GetCpeByPurl(purl.Purl, purl.Requirement)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}

@@ -35,8 +35,6 @@ type CpePurl struct {
 	Cpe     string `db:"cpe"`
 	Version string `db:"version_name"`
 	SemVer  string `db:"semver"`
-	Purl    string `db:"purl"`
-	IsMain  string `db:"int"`
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model
@@ -44,9 +42,9 @@ func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
 	return &CpePurlModel{ctx: ctx, conn: conn}
 }
 
-// GetCpeByPurlString searches for CPE details of the specified Purl string (and optional requirement).
+// GetCpeByPurl searches for CPE details of the specified Purl string (and optional requirement).
 // If version is specified in purl string the requirement is ignored
-func (m *CpePurlModel) GetCpeByPurlString(purlString, purlReq string) ([]CpePurl, error) {
+func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []CpePurl{}, errors.New("please specify a valid Purl String to query")
@@ -57,9 +55,7 @@ func (m *CpePurlModel) GetCpeByPurlString(purlString, purlReq string) ([]CpePurl
 	}
 	purlVersion := purl.Version
 
-	if len(purlVersion) > 0 { // Removes from purlString all components from version "@" included
-		purlString = utils.PurlRemoveFromVersionComponent(purlString)
-	}
+	purlString = utils.PurlRemoveFromVersionComponent(purlString) //Make sure to get the minimum purl pkg:github...
 
 	if len(purlVersion) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
 		ver := utils.GetVersionFromReq(purlReq)
@@ -87,14 +83,11 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	err := m.conn.SelectContext(m.ctx, &allCpes,
 		"SELECT tcp.cpe, v.version_name, v.semver"+
 			" FROM t_cpe tcp"+
-			" LEFT JOIN t_short_cpe_purl tscp ON tcp.short_cpe_id = tscp.short_cpe_id"+
-			" LEFT JOIN t_purl tp ON tscp.purl_id = tp.id"+
-			" LEFT JOIN versions v ON tcp.version_id = v.id"+
-			" WHERE tp.purl = $1;",
-
-		//"SELECT tc.cpe "+
-		//	"FROM t_purl tp ,t_short_cpe_purl tscp, t_cpe tc "+
-		//	"WHERE  tp.id = tscp.purl_id AND tc.short_cpe_id = tscp.short_cpe_id AND tp.purl = $1 ",
+			" INNER JOIN t_short_cpe_purl tscp ON tcp.short_cpe_id = tscp.short_cpe_id"+
+			" INNER JOIN t_purl tp ON tscp.purl_id = tp.id"+
+			" INNER JOIN versions v ON tcp.version_id = v.id"+
+			" WHERE tp.purl = $1"+
+			" ORDER BY v.version_name NULLS LAST;",
 		purlString)
 
 	if err != nil {
@@ -104,15 +97,10 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	zlog.S.Debugf("Found %v results for %v.", len(allCpes), purlString)
 
 	if len(purlReq) > 0 {
-		allCpes, err = FilterCpesByRequirement(allCpes, purlReq)
-		if err != nil {
-			zlog.S.Errorf("Failed to filter Cpes for %v - %v", purlReq, err)
-			return []CpePurl{}, fmt.Errorf("Failed to filter Cpes %v", err)
-		}
+		allCpes = FilterCpesByRequirement(allCpes, purlReq)
 	}
 
 	return allCpes, nil
-
 }
 
 //GetCpesByPurlStringVersion searches for CPEs of the specified Purl Name/Type and version
@@ -122,17 +110,13 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
-	if len(purlString) == 0 {
-		zlog.S.Errorf("Please specify a valid Purl Version to query")
-		return []CpePurl{}, errors.New("please specify a valid Purl Version to query")
-	}
 	var cpuPurls []CpePurl
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT tc.cpe, v.version_name "+
+		"SELECT tc.cpe, v.version_name, v.semver "+
 			" FROM t_cpe tc"+
-			" LEFT JOIN t_short_cpe_purl scp ON tc.short_cpe_id = scp.short_cpe_id"+
-			" LEFT JOIN t_purl p ON scp.purl_id = p.id"+
-			" LEFT JOIN versions v ON tc.version_id = v.id"+
+			" INNER JOIN t_short_cpe_purl scp ON tc.short_cpe_id = scp.short_cpe_id"+
+			" INNER JOIN t_purl p ON scp.purl_id = p.id"+
+			" INNER JOIN versions v ON tc.version_id = v.id"+
 			" WHERE p.purl = $1 AND v.version_name=$2;",
 		purlString, purlVersion)
 	if err != nil {
@@ -140,15 +124,14 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 		return []CpePurl{}, fmt.Errorf("failed to query the cpe table: %v", err)
 	}
 	zlog.S.Debugf("Found %v results for %v", len(cpuPurls), purlString)
-	// Pick one URL to return (checking for license details also)
 	return cpuPurls, nil
 }
 
-func FilterCpesByRequirement(cpes []CpePurl, purlReq string) ([]CpePurl, error) {
+func FilterCpesByRequirement(cpes []CpePurl, purlReq string) []CpePurl {
 
 	if len(cpes) == 0 {
 		zlog.S.Infof("No cpes in filterCpes()")
-		return []CpePurl{}, nil
+		return []CpePurl{}
 	}
 
 	var c *semver.Constraints
@@ -163,7 +146,7 @@ func FilterCpesByRequirement(cpes []CpePurl, purlReq string) ([]CpePurl, error) 
 	}
 
 	zlog.S.Debugf("Filtering cpes by requirement...")
-	var output []CpePurl
+	output := []CpePurl{}
 	for _, cpe := range cpes {
 		if len(cpe.SemVer) > 0 || len(cpe.Version) > 0 {
 			v, err := semver.NewVersion(cpe.Version)
@@ -184,5 +167,5 @@ func FilterCpesByRequirement(cpes []CpePurl, purlReq string) ([]CpePurl, error) 
 			zlog.S.Warnf("Skipping match as it doesn't have a version: %#v", cpe)
 		}
 	}
-	return output, nil
+	return output
 }
