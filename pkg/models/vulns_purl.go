@@ -119,7 +119,8 @@ func (m *VulnsForPurlModel) GetVulnsByPurlNameVersion(purlName string, purlVersi
 			"inner join t_cpe tc on tscp.short_cpe_id = tc.short_cpe_id "+
 			"inner join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
 			"inner join t_cve on t_cve.id = tcc.cve_id "+
-			"where p.purl = $1 and tc.version = $2;", purlName, purlVersion)
+			"inner join versions v on tc.version_id = v.id "+
+			"where p.purl = $1 and v.version_name= $2;", purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
