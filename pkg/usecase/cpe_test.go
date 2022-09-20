@@ -28,7 +28,7 @@ import (
 	"testing"
 )
 
-func TestGetVulneraibilityUseCase(t *testing.T) {
+func TestGetCpeUseCase(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
@@ -67,16 +67,16 @@ func TestGetVulneraibilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
-	vulnUc := NewVulnerabilities(ctx, conn, myConfig)
+	cpeUc := NewCpe(ctx, conn, myConfig)
 	requestDto, err := dtos.ParseVulnerabilityInput([]byte(vulnRequestData))
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when parsing input json", err)
 	}
-	vulns, err := vulnUc.GetVulnerabilities(requestDto)
+	vulns, err := cpeUc.GetCpes(requestDto)
 	if err != nil {
-		t.Fatalf("an error '%s' was not expected when getting vulnerabilities", err)
+		t.Fatalf("an error '%s' was not expected when getting cpes", err)
 	}
-	fmt.Printf("Vulneravility response: %+v\n", vulns)
+	fmt.Printf("cpes response: %+v\n", vulns)
 
 	//Broken purl
 	var vulnRequestDataBad = `
@@ -92,7 +92,7 @@ func TestGetVulneraibilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when parsing input json", err)
 	}
-	vulns, err = vulnUc.GetVulnerabilities(requestDto)
+	vulns, err = cpeUc.GetCpes(requestDto)
 	if err == nil {
 		t.Fatalf("did not get an expected error: %v", vulns)
 	}
