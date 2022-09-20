@@ -3,14 +3,11 @@ CREATE TABLE "t_cve" (
                         "id"	INTEGER,
                         "cve"	TEXT NOT NULL UNIQUE ,
                         "severity"	TEXT,
-                        "published" TEXT ,
+                        "published" DATETIME ,
                         "summary" TEXT(500),
-                        "modified" TEXT,
+                        "modified" DATETIME,
                         PRIMARY KEY ("id")
 );
-
-INSERT INTO "t_cve" ("id", "cve", "severity") VALUES ('1', 'CVE-2020-1949', 'MEDIUM');
-
 
 INSERT INTO t_cve ("id", "cve", "severity", "published", "summary", "modified") VALUES (48612, 'CVE-2011-3152', 'MEDIUM', '2014-04-27', 'DistUpgrade/DistUpgradeFetcherCore.py in Update Manager before 1:0.87.31.1, 1:0.134.x before 1:0.134.11.1, 1:0.142.x before 1:0.142.23.1, 1:0.150.x before 1:0.150.5.1, and 1:0.152.x before 1:0.152.25.5 on Ubuntu 8.04 through 11.10 does not verify the GPG signature before extracting an upgrade tarball, which allows man-in-the-middle attackers to (1) create or overwrite arbitrary files via a directory traversal attack using a crafted tar file, or (2) bypass authentication via a crafted meta-re...', '2017-08-29');
 INSERT INTO t_cve ("id", "cve", "severity", "published", "summary", "modified") VALUES (48614, 'CVE-2011-3154', 'LOW', '2014-04-17', 'DistUpgrade/DistUpgradeViewKDE.py in Update Manager before 1:0.87.31.1, 1:0.134.x before 1:0.134.11.1, 1:0.142.x before 1:0.142.23.1, 1:0.150.x before 1:0.150.5.1, and 1:0.152.x before 1:0.152.25.5 does not properly create temporary files, which allows local users to obtain the XAUTHORITY file content for a user via a symlink attack on the temporary file.', '2014-05-05');

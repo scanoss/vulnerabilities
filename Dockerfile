@@ -10,15 +10,15 @@ RUN go mod download
 COPY . ./
 
 RUN go generate ./pkg/cmd/server.go
-RUN go build -o ./scanoss-dependencies ./cmd/server
+RUN go build -o ./scanoss-vulnerabilities ./cmd/server
 
 FROM debian:buster-slim
 
 WORKDIR /app
  
-COPY --from=build /app/scanoss-dependencies /app/scanoss-dependencies
+COPY --from=build /app/scanoss-vulnerabilities /app/scanoss-vulnerabilities
 
 EXPOSE 50051
 
-ENTRYPOINT ["./scanoss-dependencies"]
+ENTRYPOINT ["./scanoss-vulnerabilities"]
 #CMD ["--help"]

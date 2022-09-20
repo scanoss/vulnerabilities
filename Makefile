@@ -1,6 +1,6 @@
 
 #vars
-IMAGE_NAME=scanoss-dependencies
+IMAGE_NAME=scanoss-vulnerabilities
 REPO=scanoss
 DOCKER_FULLNAME=${REPO}/${IMAGE_NAME}
 GHCR_FULLNAME=ghcr.io/${REPO}/${IMAGE_NAME}
@@ -20,7 +20,7 @@ clean:  ## Clean all dev data
 	@echo "Removing dev data..."
 	@rm -f pkg/cmd/version.txt version.txt
 
-version:  ## Produce dependency version text file
+version:  ## Produce vulnerability version text file
 	@echo "Writing version file..."
 	echo $(VERSION) > pkg/cmd/version.txt
 

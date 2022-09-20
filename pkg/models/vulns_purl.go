@@ -49,8 +49,8 @@ func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlMod
 	return &VulnsForPurlModel{ctx: ctx, conn: conn}
 }
 
-// GetVulnsByPurlString
-func (m *VulnsForPurlModel) GetVulnsByPurlString(purlString, purlReq string) ([]VulnsForPurl, error) {
+// GetVulnsByPurl
+func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsForPurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
@@ -72,7 +72,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlString(purlString, purlReq string) ([]
 	}
 
 	if len(purl.Version) > 0 {
-		return m.GetVulnsByPurlNameVersion(purlName, purl.Version)
+		return m.GetVulnsByPurlVersion(purlName, purl.Version)
 	}
 	return m.GetVulnsByPurlName(purlName)
 }
@@ -104,7 +104,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	return vulns, nil
 }
 
-func (m *VulnsForPurlModel) GetVulnsByPurlNameVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
@@ -126,7 +126,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlNameVersion(purlName string, purlVersi
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
 	}
-	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
 
+	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
 	return vulns, nil
 }

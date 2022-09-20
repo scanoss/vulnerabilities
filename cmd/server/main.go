@@ -14,7 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Package main loads the gRPC Dependency Server Service
+// Package main loads the gRPC Vulneravility Server Service
 package main
 
 import (
@@ -23,7 +23,7 @@ import (
 	"scanoss.com/vulnerabilities/pkg/cmd"
 )
 
-// main starts the gRPC Dependency Service
+// main starts the gRPC Vulneravility Service
 func main() {
 	// Launch the Vulnerabilities Server Service
 	if err := cmd.RunServer(); err != nil {
