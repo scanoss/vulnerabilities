@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Wed Jul 20 12:00:35 2022
+# Make data base, printed on Thu Nov 30 10:36:04 2023
 
 # Variables
 
@@ -25,21 +25,15 @@ DESKTOP_SESSION = ubuntu
 # default
 .SHELLFLAGS := -c
 # environment
-PROVIDE_FULLSTACK_ACTION = true
-# environment
 XDG_SESSION_CLASS = user
 # environment
 XDG_SESSION_TYPE = x11
-# environment
-VSCODE_LOG_NATIVE = false
 # environment
 NVM_INC = /home/oscar/.nvm/versions/node/v14.17.0/include/node
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # environment
 IM_CONFIG_PHASE = 1
-# environment
-PLATFORMIO_IDE = 2.5.0
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
 # environment
@@ -55,23 +49,21 @@ SHELL = /bin/sh
 # environment
 VTE_VERSION = 6003
 # environment
-VSCODE_NLS_CONFIG = {"locale":"es-419","availableLanguages":{},"_languagePackSupport":true}
+VSCODE_NLS_CONFIG = {"locale":"es-419","availableLanguages":{"*":"es"},"_languagePackId":"5b3efed3e801c38cc269199477353248.es","_translationsConfigFile":"/home/oscar/.config/Code/clp/5b3efed3e801c38cc269199477353248.es/tcf.json","_cacheRoot":"/home/oscar/.config/Code/clp/5b3efed3e801c38cc269199477353248.es","_resolvedLanguagePackCoreLocation":"/home/oscar/.config/Code/clp/5b3efed3e801c38cc269199477353248.es/e8a3071ea4344d9d48ef8a4df2c097372b0c5161","_corruptedFile":"/home/oscar/.config/Code/clp/5b3efed3e801c38cc269199477353248.es/corrupted.info","_languagePackSupport":true}
 # environment
 _ = /usr/bin/code
 # environment
-JOURNAL_STREAM = 9:54829
+JOURNAL_STREAM = 9:61517
 # environment
 XDG_CONFIG_DIRS = /etc/xdg/xdg-ubuntu:/etc/xdg
 # makefile (from 'Makefile', line 3)
-IMAGE_NAME = scanoss-dependencies
+IMAGE_NAME = scanoss-vulnerabilities
 # makefile (from 'Makefile', line 1)
 MAKEFILE_LIST :=  Makefile
 # automatic
 @F = $(notdir $@)
 # environment
 GIO_LAUNCHED_DESKTOP_FILE = /usr/share/applications/code.desktop
-# environment
-QT_IM_MODULE = ibus
 # environment
 USERNAME = oscar
 # environment
@@ -81,13 +73,11 @@ XDG_DATA_DIRS = /usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/d
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
-DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1001/bus,guid=d08128cce3065480a4c8f7a162c7fdd8
+DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1001/bus
 # makefile (from 'Makefile', line 7)
 VERSION = $(shell ./version.sh)
 # environment
-VSCODE_VERBOSE_LOGGING = true
-# environment
-MANAGERPID = 1677
+MANAGERPID = 1852
 # environment
 LESSOPEN = | /usr/bin/lesspipe %s
 # environment
@@ -97,19 +87,15 @@ GOPROXY = https://proxy.golang.org,direct
 # default
 MAKE_HOST := x86_64-pc-linux-gnu
 # environment
-NO_PROXY = 127.0.0.1
+PATH = /home/oscar/gems/bin:/home/oscar/.nvm/versions/node/v14.17.0/bin:/home/oscar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin:/home/oscar/go/bin
 # environment
 GPG_AGENT_INFO = /run/user/1001/gnupg/S.gpg-agent:0:1
 # environment
-GOLANG_EXECUTABLE = go
-# environment
-SESSION_MANAGER = local/quique-Lenovo-V330-15IKB:@/tmp/.ICE-unix/3780,unix/quique-Lenovo-V330-15IKB:/tmp/.ICE-unix/3780
+SESSION_MANAGER = local/quique-Lenovo-V330-15IKB:@/tmp/.ICE-unix/5592,unix/quique-Lenovo-V330-15IKB:/tmp/.ICE-unix/5592
 # environment
 XDG_RUNTIME_DIR = /run/user/1001
 # environment
 VSCODE_HANDLES_UNCAUGHT_ERRORS = true
-# environment
-THREE_SCALE_USER_TOKEN = 207c527cfc2a6b8dcf4fa43ad7a976da
 # environment
 GOPATH = /home/oscar/go
 # environment
@@ -121,15 +107,11 @@ VIRTUALENVWRAPPER_PYTHON = /usr/bin/python3
 # environment
 XDG_MENU_PREFIX = gnome-
 # environment
-VSCODE_LOG_STACK = false
-# environment
 ELECTRON_RUN_AS_NODE = 1
 # environment
-INVOCATION_ID = a039a4069ecc477bb73112ca9e3a8bdb
+INVOCATION_ID = 3e55f15fbc4d4860971555363fba53c6
 # default
 .FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
-# environment
-UUID = 22e1e6d4-513a-463d-85bc-e316029d1cf9
 # environment
 LS_COLORS = rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:
 # environment
@@ -139,19 +121,19 @@ XDG_SESSION_DESKTOP = ubuntu
 # environment
 SSH_AUTH_SOCK = /run/user/1001/keyring/ssh
 # environment
-GIO_LAUNCHED_DESKTOP_FILE_PID = 280446
+GIO_LAUNCHED_DESKTOP_FILE_PID = 208211
 # automatic
 %F = $(notdir $%)
 # environment
 DISPLAY = :0
 # environment
-VSCODE_PIPE_LOGGING = true
-# environment
 PWD = /home/oscar/scanoss/platform2.0/vulnerabilities
 # default
 .LOADED := 
 # environment
-SSH_AGENT_PID = 3525
+GEM_HOME = /home/oscar/gems
+# environment
+SSH_AGENT_PID = 5344
 # environment
 ORIGINAL_XDG_CURRENT_DESKTOP = ubuntu:GNOME
 # environment
@@ -165,15 +147,13 @@ LESSCLOSE = /usr/bin/lesspipe %s %s
 # environment
 VSCODE_CLI = 1
 # environment
-VSCODE_CODE_CACHE_PATH = /home/oscar/.config/Code/CachedData/30d9c6cd9483b2cc586687151bcbcd635f373630
+VSCODE_CODE_CACHE_PATH = /home/oscar/.config/Code/CachedData/e8a3071ea4344d9d48ef8a4df2c097372b0c5161
 # environment
 LOGNAME = oscar
 # environment
 APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
 NVM_CD_FLAGS = 
-# environment
-TELEMETRY_ID = 0898a1f9-9595-4e79-9641-fba9c59843c4
 # environment
 ELECTRON_NO_ATTACH_CONSOLE = 1
 # environment
@@ -185,21 +165,17 @@ GNOME_DESKTOP_SESSION_ID = this-is-deprecated
 # environment
 MAKELEVEL := 0
 # environment
-PLATFORMIO_PATH = /home/oscar/.platformio/python3/bin:/home/oscar/.nvm/versions/node/v14.17.0/bin:/home/oscar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin:/home/oscar/go/bin
-# environment
 COLORTERM = truecolor
 # default
 MAKE = $(MAKE_COMMAND)
 # default
 MAKECMDGOALS := all
 # environment
-PATH = /home/oscar/.nvm/versions/node/v14.17.0/bin:/home/oscar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin:/home/oscar/go/bin
+QT_IM_MODULE = ibus
 # environment
 SHLVL = 1
 # environment
 GNOME_SHELL_SESSION_MODE = ubuntu
-# environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1001/vscode-ipc-dd4bf48e-85bc-4853-915d-c8ac83735398.sock
 # default
 MAKE_VERSION := 4.2.1
 # environment
@@ -213,7 +189,7 @@ XDG_CURRENT_DESKTOP = Unity
 # default
 MAKE_COMMAND := make
 # environment
-UTM_SOURCE = vscode
+OLDPWD = /home/oscar/scanoss/platform2.0
 # default
 .VARIABLES := 
 # automatic
@@ -221,7 +197,7 @@ UTM_SOURCE = vscode
 # environment
 LANGUAGE = es_AR:es
 # environment
-VSCODE_IPC_HOOK = /run/user/1001/vscode-b6f35f9c-1.68.1-main.sock
+VSCODE_IPC_HOOK = /run/user/1001/vscode-b6f35f9c-1.74.2-main.sock
 # makefile (from 'Makefile', line 4)
 REPO = scanoss
 # makefile
@@ -234,8 +210,6 @@ MFLAGS = -pqrR
 NVM_DIR = /home/oscar/.nvm
 # automatic
 +D = $(patsubst %/,%,$(dir $+))
-# environment
-RECOMMENDER_API_URL = https://gw.api.openshift.io//api/v2
 # environment
 GDK_BACKEND = x11
 # automatic
@@ -253,21 +227,17 @@ VIRTUALENVWRAPPER_WORKON_CD = 1
 # automatic
 <F = $(notdir $<)
 # environment
-PLATFORMIO_CALLER = vscode
-# environment
 VIRTUALENVWRAPPER_SCRIPT = /usr/local/bin/virtualenvwrapper.sh
 # environment
 LC_ALL = C
 # environment
-DBUS_STARTER_BUS_TYPE = session
-# environment
 GJS_DEBUG_TOPICS = JS ERROR;JS LOG
 # environment
-GNOME_TERMINAL_SCREEN = /org/gnome/Terminal/screen/fabc28f1_6aa9_4f0b_a6b4_ef4c9a647388
+GNOME_TERMINAL_SCREEN = /org/gnome/Terminal/screen/e67e7dd5_e728_4e09_9969_56dc7e5ac40b
 # automatic
 ^F = $(notdir $^)
 # environment
-GNOME_TERMINAL_SERVICE = :1.6386
+GNOME_TERMINAL_SERVICE = :1.154
 # default
 SUFFIXES := 
 # environment
@@ -285,14 +255,11 @@ LANG = C
 # environment
 TERM = xterm-256color
 # environment
- 
-VSCODE_PID = 280446
+VSCODE_PID = 208211
 # makefile (from 'Makefile', line 5)
 DOCKER_FULLNAME = ${REPO}/${IMAGE_NAME}
-# environment
-DBUS_STARTER_ADDRESS = unix:path=/run/user/1001/bus,guid=d08128cce3065480a4c8f7a162c7fdd8
 # variable set hash-table stats:
-# Load=139/1024=14%, Rehash=0, Collisions=21/165=13%
+# Load=123/1024=12%, Rehash=0, Collisions=17/149=11%
 
 # Pattern-specific Variable Values
 
@@ -300,9 +267,9 @@ DBUS_STARTER_ADDRESS = unix:path=/run/user/1001/bus,guid=d08128cce3065480a4c8f7a
 
 # Directories
 
-# . (device 2052, inode 15997970): 19 files, no impossibilities.
+# . (device 2052, inode 15990890): 21 files, no impossibilities.
 
-# 19 files, no impossibilities in 1 directories.
+# 21 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -330,7 +297,8 @@ ghcr_all: ghcr_build ghcr_tag ghcr_push
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-06-14 06:25:41
+#  Last modified 2023-11-30 10:35:16.009815667
+ 
 #  File has been updated.
 #  Successfully updated.
 
@@ -397,12 +365,12 @@ ghcr_tag:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 32 / storage = 287 B / avg = 8 B
-# current buf: size = 8162 B / used = 287 B / count = 32 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 34 / storage = 297 B / avg = 8 B
+# current buf: size = 8162 B / used = 297 B / count = 34 / avg = 8 B
 
-# strcache performance: lookups = 49 / hit rate = 34%
+# strcache performance: lookups = 51 / hit rate = 33%
 # hash-table stats:
-# Load=32/8192=0%, Rehash=0, Collisions=1/49=2%
-# Finished Make data base on Wed Jul 20 12:00:36 2022
+# Load=34/8192=0%, Rehash=0, Collisions=1/51=2%
+# Finished Make data base on Thu Nov 30 10:36:04 2023
 
  

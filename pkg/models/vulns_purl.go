@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2022 SCANOSS.COM
+ * Copyright (C) 2018-2023 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,10 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
-	"strings"
 )
 
 type VulnsForPurlModel struct {
@@ -87,12 +88,12 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct t_cve.cve, t_cve.severity, t_cve.published, t_cve.modified, t_cve.summary "+
-			"from t_purl p "+
-			"inner join t_short_cpe_purl tscp on p.id = tscp.purl_id "+
-			"inner join t_cpe tc on tscp.short_cpe_id = tc.short_cpe_id "+
-			"inner join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
-			"inner join t_cve on t_cve.id = tcc.cve_id "+
+		" select distinct cves.cve, cves.severity, cves.published, cves.modified, cves.summary "+
+			"from purls p "+
+			"inner join short_cpe_purl tscp on p.id = tscp.purl_id "+
+			"inner join cpes tc on tscp.short_cpe_id = tc.short_cpe_id "+
+			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
+			"inner join cves on cves.id = tcc.cve_id "+
 			"where p.purl = $1;", purlName)
 
 	if err != nil {
@@ -113,14 +114,14 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select t_cve.cve, t_cve.severity, t_cve.published, t_cve.modified, t_cve.summary "+
-			"from t_purl p "+
-			"inner join t_short_cpe_purl tscp on p.id = tscp.purl_id "+
-			"inner join t_cpe tc on tscp.short_cpe_id = tc.short_cpe_id "+
-			"inner join t_cpe_cve tcc on tc.id = tcc.cpe_id "+
-			"inner join t_cve on t_cve.id = tcc.cve_id "+
+		"select cves.cve, cves.severity, cves.published, cves.modified, cves.summary "+
+			"from purls p "+
+			"inner join short_cpe_purl tscp on p.id = tscp.purl_id "+
+			"inner join cpes tc on tscp.short_cpe_id = tc.short_cpe_id "+
+			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
+			"inner join cves on cves.id = tcc.cve_id "+
 			"inner join versions v on tc.version_id = v.id "+
-			"where p.purl = $1 and v.version_name= $2;", purlName, purlVersion)
+			"where p.purl = $1 and v.version_name= $2; ", purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
