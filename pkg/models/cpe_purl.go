@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2022 SCANOSS.COM
+ * Copyright (C) 2018-2023 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
@@ -82,9 +83,9 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	zlog.S.Debugf("ctx %v", m.ctx)
 	err := m.conn.SelectContext(m.ctx, &allCpes,
 		"SELECT tcp.cpe, v.version_name, v.semver"+
-			" FROM t_cpe tcp"+
-			" INNER JOIN t_short_cpe_purl tscp ON tcp.short_cpe_id = tscp.short_cpe_id"+
-			" INNER JOIN t_purl tp ON tscp.purl_id = tp.id"+
+			" FROM cpes tcp"+
+			" INNER JOIN short_cpe_purl tscp ON tcp.short_cpe_id = tscp.short_cpe_id"+
+			" INNER JOIN purls tp ON tscp.purl_id = tp.id"+
 			" INNER JOIN versions v ON tcp.version_id = v.id"+
 			" WHERE tp.purl = $1"+
 			" ORDER BY v.version_name NULLS LAST;",
@@ -113,9 +114,9 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 	var cpuPurls []CpePurl
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
 		"SELECT tc.cpe, v.version_name, v.semver "+
-			" FROM t_cpe tc"+
-			" INNER JOIN t_short_cpe_purl scp ON tc.short_cpe_id = scp.short_cpe_id"+
-			" INNER JOIN t_purl p ON scp.purl_id = p.id"+
+			" FROM cpes tc"+
+			" INNER JOIN short_cpe_purl scp ON tc.short_cpe_id = scp.short_cpe_id"+
+			" INNER JOIN purls p ON scp.purl_id = p.id"+
 			" INNER JOIN versions v ON tc.version_id = v.id"+
 			" WHERE p.purl = $1 AND v.version_name=$2;",
 		purlString, purlVersion)
