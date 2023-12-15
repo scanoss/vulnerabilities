@@ -88,13 +88,12 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		" select distinct cves.cve, cves.severity, cves.published, cves.modified, cves.summary "+
-			"from purls p "+
-			"inner join short_cpe_purl tscp on p.id = tscp.purl_id "+
-			"inner join cpes tc on tscp.short_cpe_id = tc.short_cpe_id "+
+		"select distinct cves.cve, cves.severity, cves.published, cves.modified, cves.summary from purls p "+
+			"inner join t_short_cpe_purl_exported tscp on p.id = tscp.purl_id "+
+			"inner join cpes tc on tscp.cpe_id   = tc.id  "+
 			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
 			"inner join cves on cves.id = tcc.cve_id "+
-			"where p.purl = $1;", purlName)
+			"where p.purl= $1;", purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
@@ -116,8 +115,8 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 	err := m.conn.SelectContext(m.ctx, &vulns,
 		"select cves.cve, cves.severity, cves.published, cves.modified, cves.summary "+
 			"from purls p "+
-			"inner join short_cpe_purl tscp on p.id = tscp.purl_id "+
-			"inner join cpes tc on tscp.short_cpe_id = tc.short_cpe_id "+
+			"inner join t_short_cpe_purl_exported tscpe  on p.id = tscpe.purl_id "+
+			"inner join cpes tc on tscpe.cpe_id = tc.short_cpe_id "+
 			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
 			"inner join cves on cves.id = tcc.cve_id "+
 			"inner join versions v on tc.version_id = v.id "+
