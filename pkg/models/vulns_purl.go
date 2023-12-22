@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2022 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,11 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
+	"strings"
 )
 
 type VulnsForPurlModel struct {
@@ -88,12 +87,18 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct cves.cve, cves.severity, cves.published, cves.modified, cves.summary from purls p "+
-			"inner join t_short_cpe_purl_exported tscp on p.id = tscp.purl_id "+
-			"inner join cpes tc on tscp.cpe_id   = tc.id  "+
-			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
-			"inner join cves on cves.id = tcc.cve_id "+
-			"where p.purl= $1;", purlName)
+		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
+			"from "+
+			"t_short_cpe_purl_exported tscpe, "+
+			"short_cpes sc, "+
+			"cves c2 "+
+			"inner join nvd_match_criteria_ids nmci "+
+			"on "+
+			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
+			"where "+
+			"tscpe.purl = $1 "+
+			"and tscpe.cpe_id = sc.id "+
+			"and sc.id = nmci.short_cpe_id;", purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
@@ -113,14 +118,37 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select cves.cve, cves.severity, cves.published, cves.modified, cves.summary "+
-			"from purls p "+
-			"inner join t_short_cpe_purl_exported tscpe  on p.id = tscpe.purl_id "+
-			"inner join cpes tc on tscpe.cpe_id = tc.short_cpe_id "+
-			"inner join cpe_cve tcc on tc.id = tcc.cpe_id "+
-			"inner join cves on cves.id = tcc.cve_id "+
-			"inner join versions v on tc.version_id = v.id "+
-			"where p.purl = $1 and v.version_name= $2; ", purlName, purlVersion)
+		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
+			"from "+
+			"t_short_cpe_purl_exported tscpe, "+
+			"short_cpes sc, "+
+			"cves c2 "+
+			"inner join nvd_match_criteria_ids nmci "+
+			"on "+
+			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
+			"where "+
+			"tscpe.purl = $1 "+
+			"and ($2 = nmci.version_start_including or $2 = nmci.version_end_including "+
+			"or "+
+			"( "+
+			"( "+
+			"(nmci.version_start_excluding = '' and nmci.version_start_including = '') "+
+			"or "+
+			"(nmci.version_start_excluding != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20)) "+
+			"or "+
+			"(nmci.version_start_including != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20)) "+
+			") and "+
+			"( "+
+			"(nmci.version_end_excluding = '' and nmci.version_end_including = '') "+
+			"or "+
+			"(nmci.version_end_excluding != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))"+
+			"or "+
+			"(nmci.version_end_including != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20)) "+
+			")"+
+			")"+
+			")"+
+			"and tscpe.cpe_id = sc.id "+
+			"and sc.id = nmci.short_cpe_id;", purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
