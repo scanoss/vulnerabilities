@@ -21,27 +21,27 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"net/url"
-	"os"
-	"strings"
-	"time"
-
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"go.uber.org/zap/zapcore"
+	"github.com/scanoss/go-grpc-helper/pkg/files"
+	gd "github.com/scanoss/go-grpc-helper/pkg/grpc/database"
+	gs "github.com/scanoss/go-grpc-helper/pkg/grpc/server"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+	"net/http"
+	"os"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/protocol/grpc"
 	"scanoss.com/vulnerabilities/pkg/service"
+	"strings"
 )
 
 //go:generate bash ../../get_version.sh
 //go:embed version.txt
 var version string
 
-// getConfig checks command line args for option to feed into the config parser
+// getConfig checks command line args for option to feed into the config parser.
 func getConfig() (*myconfig.ServerConfig, error) {
 	var jsonConfig, envConfig string
 	flag.StringVar(&jsonConfig, "json-config", "", "Application JSON config")
@@ -86,56 +86,50 @@ func RunServer() error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
-	// Check mode to determine which logger to load
-	switch strings.ToLower(cfg.App.Mode) {
-	case "prod":
-		var err error
-		if cfg.App.Debug {
-			err = zlog.NewSugaredProdLoggerLevel(zapcore.DebugLevel)
-		} else {
-			err = zlog.NewSugaredProdLogger()
-		}
-		if err != nil {
-			return fmt.Errorf("failed to load logger: %v", err)
-		}
-		zlog.L.Debug("Running with debug enabled")
-	default:
-		if err := zlog.NewSugaredDevLogger(); err != nil {
-			return fmt.Errorf("failed to load logger: %v", err)
-		}
+
+	err = zlog.SetupAppLogger(cfg.App.Mode, cfg.Logging.ConfigFile, cfg.App.Debug)
+	if err != nil {
+		return err
 	}
 	defer zlog.SyncZap()
+	// Check if TLS/SSL should be enabled
+	startTLS, err := files.CheckTLS(cfg.TLS.CertFile, cfg.TLS.KeyFile)
+	if err != nil {
+		return err
+	}
+	// Check if IP filtering should be enabled
+	allowedIPs, deniedIPs, err := files.LoadFiltering(cfg.Filtering.AllowListFile, cfg.Filtering.DenyListFile)
+	if err != nil {
+		return err
+	}
+
 	zlog.S.Infof("Starting SCANOSS Vulnerability Service: %v", strings.TrimSpace(version))
 	// Setup database connection pool
-	var dsn string
-	if len(cfg.Database.Dsn) > 0 {
-		dsn = cfg.Database.Dsn
-	} else {
-		dsn = fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=%s",
-			cfg.Database.Driver,
-			url.QueryEscape(cfg.Database.User),
-			url.QueryEscape(cfg.Database.Passwd),
-			cfg.Database.Host,
-			cfg.Database.Schema,
-			cfg.Database.SslMode)
-	}
-	zlog.S.Debug("Connecting to Database... %s,%s", cfg.Database.User, cfg.Database.Passwd)
-	db, err := sqlx.Open(cfg.Database.Driver, dsn)
+	db, err := gd.OpenDBConnection(cfg.Database.Dsn, cfg.Database.Driver, cfg.Database.User, cfg.Database.Passwd,
+		cfg.Database.Host, cfg.Database.Schema, cfg.Database.SslMode)
 	if err != nil {
-		zlog.S.Errorf("Failed to open database: %v", err)
-		return fmt.Errorf("failed to open database: %v", err)
+		return err
 	}
-	db.SetConnMaxIdleTime(30 * time.Minute) // TODO add to app config
-	db.SetConnMaxLifetime(time.Hour)
-	db.SetMaxIdleConns(20)
-	db.SetMaxOpenConns(100)
-	err = db.Ping()
-	if err != nil {
-		zlog.S.Errorf("Failed to ping database: %v", err)
-		return fmt.Errorf("failed to ping database: %v", err)
+	if err = gd.SetDBOptionsAndPing(db); err != nil {
+		return err
 	}
-	defer closeDbConnection(db)
+	defer gd.CloseDBConnection(db)
+	// Setup dynamic logging (if necessary)
+	zlog.SetupAppDynamicLogging(cfg.Logging.DynamicPort, cfg.Logging.DynamicLogging)
+
+	// Register the cryptography service
 	v2API := service.NewVulnerabilityServer(db, cfg)
-	ctx := context.Background()
-	return grpc.RunServer(ctx, v2API, cfg.App.Port)
+	_ = context.Background()
+	// Start the REST grpc-gateway if requested
+	var srv *http.Server
+	if len(cfg.App.RESTPort) > 0 {
+	}
+
+	// Start the gRPC service
+	server, err := grpc.RunServer(cfg, v2API, cfg.App.GRPCPort, allowedIPs, deniedIPs, startTLS, version)
+	if err != nil {
+		return err
+	}
+	// graceful shutdown
+	return gs.WaitServerComplete(srv, server)
 }
