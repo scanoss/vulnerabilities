@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/scanoss/go-grpc-helper/pkg/files"
 	gd "github.com/scanoss/go-grpc-helper/pkg/grpc/database"
@@ -33,6 +32,7 @@ import (
 	"os"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/protocol/grpc"
+	"scanoss.com/vulnerabilities/pkg/protocol/rest"
 	"scanoss.com/vulnerabilities/pkg/service"
 	"strings"
 )
@@ -69,14 +69,6 @@ func getConfig() (*myconfig.ServerConfig, error) {
 	}
 	myConfig, err := myconfig.NewServerConfig(feeders)
 	return myConfig, err
-}
-
-// closeDbConnection closes the specified DB connection
-func closeDbConnection(db *sqlx.DB) {
-	err := db.Close()
-	if err != nil {
-		zlog.S.Warnf("Problem closing DB: %v", err)
-	}
 }
 
 // RunServer runs the gRPC Vulnerabilities Server
@@ -119,10 +111,13 @@ func RunServer() error {
 
 	// Register the cryptography service
 	v2API := service.NewVulnerabilityServer(db, cfg)
-	_ = context.Background()
+	ctx := context.Background()
 	// Start the REST grpc-gateway if requested
 	var srv *http.Server
 	if len(cfg.App.RESTPort) > 0 {
+		if srv, err = rest.RunServer(cfg, ctx, cfg.App.GRPCPort, cfg.App.RESTPort, allowedIPs, deniedIPs, startTLS); err != nil {
+			return err
+		}
 	}
 
 	// Start the gRPC service
