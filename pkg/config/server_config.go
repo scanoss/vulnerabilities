@@ -57,14 +57,14 @@ type ServerConfig struct {
 		Trace   bool   `env:"DB_TRACE"` // true/false
 	}
 	TLS struct {
-		CertFile string `env:"CRYPTO_TLS_CERT"` // TLS Certificate
-		KeyFile  string `env:"CRYPTO_TLS_KEY"`  // Private TLS Key
+		CertFile string `env:"VULN_TLS_CERT"` // TLS Certificate
+		KeyFile  string `env:"VULN_TLS_KEY"`  // Private TLS Key
 	}
 	Filtering struct {
-		AllowListFile  string `env:"CRYPTO_ALLOW_LIST"`       // Allow list file for incoming connections
-		DenyListFile   string `env:"CRYPTO_DENY_LIST"`        // Deny list file for incoming connections
-		BlockByDefault bool   `env:"CRYPTO_BLOCK_BY_DEFAULT"` // Block request by default if they are not in the allow list
-		TrustProxy     bool   `env:"CRYPTO_TRUST_PROXY"`      // Trust the interim proxy or not (causes the source IP to be validated instead of the proxy)
+		AllowListFile  string `env:"VULN_ALLOW_LIST"`       // Allow list file for incoming connections
+		DenyListFile   string `env:"VULN_DENY_LIST"`        // Deny list file for incoming connections
+		BlockByDefault bool   `env:"VULN_BLOCK_BY_DEFAULT"` // Block request by default if they are not in the allow list
+		TrustProxy     bool   `env:"VULN_TRUST_PROXY"`      // Trust the interim proxy or not (causes the source IP to be validated instead of the proxy)
 	}
 	Components struct {
 		CommitMissing bool `env:"COMP_COMMIT_MISSING"` // Write component details to the DB if they are looked up live

@@ -109,7 +109,7 @@ func RunServer() error {
 	// Setup dynamic logging (if necessary)
 	zlog.SetupAppDynamicLogging(cfg.Logging.DynamicPort, cfg.Logging.DynamicLogging)
 
-	// Register the cryptography service
+	// Register the vulnerability service
 	v2API := service.NewVulnerabilityServer(db, cfg)
 	ctx := context.Background()
 	// Start the REST grpc-gateway if requested
