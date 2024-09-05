@@ -28,9 +28,11 @@ import (
 	gd "github.com/scanoss/go-grpc-helper/pkg/grpc/database"
 	gs "github.com/scanoss/go-grpc-helper/pkg/grpc/server"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+	"go.uber.org/zap/zapcore"
 	"net/http"
 	"os"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
+	zlog_old "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/protocol/grpc"
 	"scanoss.com/vulnerabilities/pkg/protocol/rest"
 	"scanoss.com/vulnerabilities/pkg/service"
@@ -78,6 +80,26 @@ func RunServer() error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
+
+	//TODO: Remove when replacing zlog
+	switch strings.ToLower(cfg.App.Mode) {
+	case "prod":
+		var err error
+		if cfg.App.Debug {
+			err = zlog_old.NewSugaredProdLoggerLevel(zapcore.DebugLevel)
+		} else {
+			err = zlog_old.NewSugaredProdLogger()
+		}
+		if err != nil {
+			return fmt.Errorf("failed to load logger: %v", err)
+		}
+		zlog_old.L.Debug("Running with debug enabled")
+	default:
+		if err := zlog_old.NewSugaredDevLogger(); err != nil {
+			return fmt.Errorf("failed to load logger: %v", err)
+		}
+	}
+	defer zlog_old.SyncZap()
 
 	err = zlog.SetupAppLogger(cfg.App.Mode, cfg.Logging.ConfigFile, cfg.App.Debug)
 	if err != nil {
