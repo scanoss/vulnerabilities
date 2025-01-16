@@ -69,6 +69,9 @@ type ServerConfig struct {
 	Components struct {
 		CommitMissing bool `env:"COMP_COMMIT_MISSING"` // Write component details to the DB if they are looked up live
 	}
+	Vulnerabilities struct {
+		OSVBaseURL string `env:"OSV_BASE_URL"`
+	}
 }
 
 // NewServerConfig loads all config options and return a struct for use.
@@ -106,4 +109,5 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Telemetry.Enabled = false
 	cfg.Telemetry.OltpExporter = "0.0.0.0:4317" // Default OTEL OLTP gRPC Exporter endpoint
 	cfg.Components.CommitMissing = false
+	cfg.Vulnerabilities.OSVBaseURL = "https://api.osv.dev/v1"
 }

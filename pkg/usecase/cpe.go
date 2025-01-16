@@ -39,7 +39,7 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig)
 	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn)}
 }
 
-func (d CpeUseCase) GetCpes(request dtos.VulnerabilityInput) (dtos.CpeOutput, error) {
+func (d CpeUseCase) GetCpes(request dtos.VulnerabilityRequestDTO) (dtos.CpeOutput, error) {
 
 	var out []dtos.CpePurlOutput
 	var problems = false
