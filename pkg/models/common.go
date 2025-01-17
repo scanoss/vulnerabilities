@@ -85,3 +85,13 @@ func CloseConn(conn *sqlx.Conn) {
 		}
 	}
 }
+
+// CloseRows closes the specified DB query row and logs any errors.
+func CloseRows(rows *sqlx.Rows) {
+	if rows != nil {
+		err := rows.Close()
+		if err != nil {
+			zlog.S.Warnf("Problem closing Rows: %v", err)
+		}
+	}
+}

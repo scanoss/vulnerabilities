@@ -122,3 +122,17 @@ func ProjectUrl(purlName, purlType string) (string, error) {
 	}
 	return "", fmt.Errorf("no url prefix found for '%v': %v", purlType, purlName)
 }
+
+// ConvertGoPurlStringToGithub takes an input PURL string and converts it to its GitHub equivalent if possible
+func ConvertGoPurlStringToGithub(purlString string) string {
+	// Replace Golang GitHub package reference with just GitHub
+	if len(purlString) > 0 && strings.HasPrefix(purlString, "pkg:golang/github.com/") {
+		s := strings.Replace(purlString, "pkg:golang/github.com/", "pkg:github/", -1)
+		p := strings.Split(s, "/")
+		if len(p) >= 3 {
+			return fmt.Sprintf("%s/%s/%s", p[0], p[1], p[2]) // Only return the GitHub part of the url
+		}
+		return s
+	}
+	return purlString
+}
