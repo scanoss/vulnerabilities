@@ -48,8 +48,8 @@ func loadSqlData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn, filename str
 // LoadTestSqlData loads all the required test SQL files
 func LoadTestSqlData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn) error {
 	files := []string{"../models/tests/cpe.sql", "../models/tests/cpe_cve.sql", "../models/tests/cve.sql",
-		"../models/tests/purl.sql", "../models/tests/short_cpe.sql", "../models/tests/short_cpe_purl.sql",
-		"../models/tests/versions.sql"}
+		"../models/tests/purl.sql", "../models/tests/short_cpe.sql",
+		"../models/tests/versions.sql", "../models/tests/ndv_match_criteria_ids.sql", "../models/tests/short_cpe_purl.sql"}
 	return loadTestSqlDataFiles(db, ctx, conn, files)
 }
 
@@ -82,6 +82,16 @@ func CloseConn(conn *sqlx.Conn) {
 		err := conn.Close()
 		if err != nil {
 			zlog.S.Warnf("Problem closing DB connection: %v", err)
+		}
+	}
+}
+
+// CloseRows closes the specified DB query row and logs any errors.
+func CloseRows(rows *sqlx.Rows) {
+	if rows != nil {
+		err := rows.Close()
+		if err != nil {
+			zlog.S.Warnf("Problem closing Rows: %v", err)
 		}
 	}
 }

@@ -39,6 +39,11 @@ type Version struct {
 	SemVer      string `db:"semver"`
 }
 
+type PurlVersion struct {
+	PurlName string `db:"purl_name"`
+	Semver   string `db:"semver"`
+}
+
 // TODO add cache for versions already searched for?
 
 // NewVersionModel creates a new instance of the Version Model

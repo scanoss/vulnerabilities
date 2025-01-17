@@ -19,12 +19,12 @@ package usecase
 import (
 	"context"
 	"fmt"
+	myconfig "scanoss.com/vulnerabilities/pkg/config"
+	"scanoss.com/vulnerabilities/pkg/dtos"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	myconfig "scanoss.com/vulnerabilities/pkg/config"
-	"scanoss.com/vulnerabilities/pkg/dtos"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/models"
 )
@@ -48,21 +48,21 @@ func TestGetVulneraibilityUseCase(t *testing.T) {
 	defer models.CloseConn(conn)
 	err = models.LoadTestSqlData(db, ctx, conn)
 	if err != nil {
-		t.Fatalf("an error '%s' was not expected when loading test data", err)
+		t.Fatalf("an error '%v' was not expected when loading test data", err)
 	}
 	var vulnRequestData = `
-	{
-		"purls": [
-   	 		{
-   	   			"purl": "pkg:github/tseliot/screen-resolution-extra"    
-   	 		},{
-				"purl": ""
-			},
-  	 		{
-   	   			"purl": "pkg:github/candlepin/candlepin"    
-   	 		}
-		]
-	}`
+		{
+			"purls": [
+	   	 		{
+	   	   			"purl": "pkg:github/tseliot/screen-resolution-extra"
+	   	 		},{
+					"purl": ""
+				},
+	  	 		{
+	   	   			"purl": "pkg:github/candlepin/candlepin"
+	   	 		}
+			]
+		}`
 
 	myConfig, err := myconfig.NewServerConfig(nil)
 	if err != nil {
@@ -73,6 +73,7 @@ func TestGetVulneraibilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when parsing input json", err)
 	}
+	zlog.S.Infof("Request DTO: %+v", requestDto)
 	vulns, err := vulnUc.GetVulnerabilities(requestDto)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when getting vulnerabilities", err)
@@ -81,14 +82,14 @@ func TestGetVulneraibilityUseCase(t *testing.T) {
 
 	//Broken purl
 	var vulnRequestDataBad = `
-		{
-		  "purls": [
 			{
-			  "purl": "pkg:github/"    
+			  "purls": [
+				{
+				  "purl": "pkg:github/"
+				}
+			  ]
 			}
-		  ]
-		}		
-	`
+		`
 	requestDto, err = dtos.ParseVulnerabilityInput([]byte(vulnRequestDataBad))
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when parsing input json", err)

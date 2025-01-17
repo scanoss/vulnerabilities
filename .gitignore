@@ -32,3 +32,6 @@ version.txt
 *.zip
 
 /app-config*
+
+.idea
+.DS_Store
