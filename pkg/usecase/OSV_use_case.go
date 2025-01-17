@@ -1,16 +1,33 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) 2018-2025 SCANOSS.COM
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package usecase
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	_ "io"
-	"log"
+	"io"
+	_ "log"
 	"net/http"
 	"scanoss.com/vulnerabilities/pkg/dtos"
-	u "scanoss.com/vulnerabilities/pkg/utils"
+	"scanoss.com/vulnerabilities/pkg/utils"
 	"strings"
 	"sync"
+	"time"
 
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
@@ -29,7 +46,7 @@ type OSVUseCase struct {
 	OSVBaseURL string
 	maxWorkers int
 	semaphore  chan struct{} // Used to limit concurrent requests
-
+	client     *http.Client  // Single shared
 }
 
 func NewOSVUseCase(OSVBaseUrl string) *OSVUseCase {
@@ -37,13 +54,16 @@ func NewOSVUseCase(OSVBaseUrl string) *OSVUseCase {
 		OSVBaseURL: OSVBaseUrl,
 		maxWorkers: 4,
 		semaphore:  make(chan struct{}, 4),
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 }
 
 func (us OSVUseCase) Execute(dto dtos.VulnerabilityRequestDTO) dtos.VulnerabilityOutput {
 	zlog.S.Infof("OSV Base URL: %s", us.OSVBaseURL)
 
-	osvRequests := []OSVRequest{}
+	var osvRequests []OSVRequest
 	for _, element := range dto.Purls {
 		if element.Requirement != "" {
 			osvRequest := OSVRequest{
@@ -81,12 +101,7 @@ func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOu
 		}(request)
 	}
 	wg.Wait()
-
-	// Start a goroutine to close channel after all work is done
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	close(results)
 
 	// Collect all results into a slice
 	var response = dtos.VulnerabilityOutput{
@@ -102,54 +117,79 @@ func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOu
 func (us OSVUseCase) processRequest(osvRequest OSVRequest) (osvResponseDTO dtos.VulnerabilityPurlOutput) {
 	out, err := json.Marshal(osvRequest)
 	if err != nil {
-		log.Fatal(err)
+		zlog.S.Errorf("Failed to marshal request: %s", err)
+		return dtos.VulnerabilityPurlOutput{}
 	}
+
 	req, err := http.NewRequest("POST", us.OSVBaseURL+"/query", bytes.NewBuffer(out))
-	// Set the content type header
+	if err != nil {
+		zlog.S.Errorf("Failed to create HTTP request: %s", err)
+		return dtos.VulnerabilityPurlOutput{}
+	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	// Use a shared HTTP client to avoid creating a new one every call
+	resp, err := us.client.Do(req)
 	if err != nil {
-		log.Printf("Request failed: %s", err)
+		zlog.S.Errorf("HTTP request failed: %s", err)
+		return dtos.VulnerabilityPurlOutput{}
 	}
 
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			zlog.S.Errorf("Failed to close HTTP response body: %s", err)
+		}
+	}(resp.Body)
+
+	// Check for non-200 HTTP responses
+	if resp.StatusCode != http.StatusOK {
+		zlog.S.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
+		return dtos.VulnerabilityPurlOutput{}
+	}
+
 	var OSVResponse dtos.OSVResponseDTO
 	err = json.NewDecoder(resp.Body).Decode(&OSVResponse)
 	if err != nil {
 		// Handle error
 		zlog.S.Errorf("Failed to decode response: %s", err)
+		return dtos.VulnerabilityPurlOutput{}
 	}
 
-	vulnerabilities := []dtos.VulnerabilitiesOutput{}
-	for _, vul := range OSVResponse.Vulns {
+	response := dtos.VulnerabilityPurlOutput{
+		Purl:            strings.Split(osvRequest.Package.Purl, "@")[0],
+		Vulnerabilities: us.mapOSVVulnerabilities(OSVResponse.Vulns),
+	}
+
+	return response
+}
+
+// mapOSVVulnerabilities converts OSV vulnerabilities to the required DTO structure
+func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.VulnerabilitiesOutput {
+	vulnerabilities := make([]dtos.VulnerabilitiesOutput, 0, len(vulns))
+	for _, vul := range vulns {
+		// Select CVE or use the ID as fallback
 		cve := vul.ID
 		if len(vul.Aliases) > 0 {
 			cve = vul.Aliases[0]
 		}
 
+		// Determine severity
 		severity := ""
 		if vul.DatabaseSpecific.Severity != "" {
-			cve = vul.DatabaseSpecific.Severity
+			severity = vul.DatabaseSpecific.Severity
 		}
 
-		osvVulnerability := dtos.VulnerabilitiesOutput{
+		// Map to VulnerabilitiesOutput DTO
+		vulnerabilities = append(vulnerabilities, dtos.VulnerabilitiesOutput{
 			Id:        vul.ID,
 			Cve:       cve,
 			Summary:   vul.Summary,
 			Severity:  severity,
-			Published: u.OnlyDate(vul.Published),
-			Modified:  u.OnlyDate(vul.Modified),
+			Published: utils.OnlyDate(vul.Published),
+			Modified:  utils.OnlyDate(vul.Modified),
 			Source:    "OSV",
-		}
-		vulnerabilities = append(vulnerabilities, osvVulnerability)
+		})
 	}
-
-	response := dtos.VulnerabilityPurlOutput{
-		Purl:            strings.Split(osvRequest.Package.Purl, "@")[0],
-		Vulnerabilities: vulnerabilities,
-	}
-
-	return response
+	return vulnerabilities
 }
