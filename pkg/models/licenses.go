@@ -20,7 +20,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -61,11 +60,11 @@ func (m *LicenseModel) GetLicenseByID(id int32) (License, error) {
 		return License{}, errors.New("please specify a valid License Name to query")
 	}
 	var license License
-	err := m.conn.QueryRowxContext(m.ctx,
+	err := m.conn.SelectContext(m.ctx, &license,
 		"SELECT id, license_name, spdx_id, is_spdx FROM licenses"+
 			" WHERE id = $1",
-		id).StructScan(&license)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		id)
+	if err != nil {
 		m.s.Errorf("Error: Failed to query license table for %v: %#v", id, err)
 		return License{}, fmt.Errorf("failed to query the license table: %v", err)
 	}
@@ -80,16 +79,15 @@ func (m *LicenseModel) GetLicenseByName(name string, create bool) (License, erro
 	}
 	var license License
 	m.s.Infof("CONNECTION GetLicenseByName %+v", m.conn)
-	err := m.conn.QueryRowxContext(m.ctx,
+	err := m.conn.SelectContext(m.ctx, &license,
 		"SELECT id, license_name, spdx_id, is_spdx FROM licenses"+
 			" WHERE license_name = $1",
-		name,
-	).StructScan(&license)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		m.s.Errorf("Failed to query license table for %v: %v", name, err)
-		return License{}, fmt.Errorf("failed to query the license table: %v", err)
+		name)
+	if err != nil {
+		return License{}, fmt.Errorf("license not found: %s", name)
 	}
 	if create && len(license.LicenseName) == 0 { // No license found and requested to create an entry
+		m.s.Infof("Creating license entry %s", name)
 		return m.saveLicense(name)
 	}
 	return license, nil
@@ -103,17 +101,15 @@ func (m *LicenseModel) saveLicense(name string) (License, error) {
 	}
 	m.s.Debugf("Attempting to save '%v' to the licenses table...", name)
 	// TODO should we populate the spdx_id before inserting the license?
-	var license License
-	err := m.conn.QueryRowxContext(m.ctx,
-		"INSERT INTO licenses (license_name, spdx_id, is_spdx, is_sanitized) VALUES($1, $2, $3, $4)"+
-			" RETURNING id, license_name, spdx_id, is_spdx",
+	_, err := m.conn.ExecContext(m.ctx,
+		"INSERT INTO licenses (license_name, spdx_id, is_spdx, is_sanitized) VALUES($1, $2, $3, $4)",
 		name, "", false, false,
-	).StructScan(&license)
+	)
 	if err != nil {
 		m.s.Warnf("Failed to insert new license name into licenses table for %v: %v", name, err)
 		return m.GetLicenseByName(name, false) // Search one more time for it, just in case someone else added it
 	}
-	return license, nil
+	return m.GetLicenseByName(name, false)
 }
 
 // CleanseLicenseName cleans up a license name to make it searchable in the licenses table.

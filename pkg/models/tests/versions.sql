@@ -312,4 +312,10 @@ INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19532557, '1.3.5
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19532572, '1.6', '1.6.0');
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19533308, '3.4.3', '3.4.3');
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19541079, '1.6.5', '1.6.5');
-
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19541010, '0.0.1', '0.0.1');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19541011, '0.0.10', '0.0.10');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (258510, '0.0.12', 'v0.0.12');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (11435747, '0.0.11', 'v0.0.1-1');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19836180,'0.10.52-4','0.10.52+4');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (11640350, '1.7.0', 'v1.7.0');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (5193086, '1.19.0', '');

@@ -19,30 +19,35 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"reflect"
 	"testing"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 func TestLicensesSearch(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
-	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	licenseModel := NewLicenseModel(ctx, s, conn)
+	licenseModel := NewLicenseModel(ctx, zlog.S, conn)
 	var name = "MIT"
 	fmt.Printf("Searching for license: %v\n", name)
 	license, err := licenseModel.GetLicenseByName(name, false)
@@ -109,22 +114,30 @@ func TestLicensesSearch(t *testing.T) {
 }
 
 func TestLicensesSearchId(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
-	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
-	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	defer CloseDB(db)
+	defer zlog.SyncZap()
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	licenseModel := NewLicenseModel(ctx, s, conn)
+	if err != nil {
+		t.Fatalf("failed to load SQL test data: %v", err)
+	}
+	licenseModel := NewLicenseModel(ctx, zlog.S, conn)
 
 	name := "MIT"
 	fmt.Printf("Searching for license: %v\n", name)
@@ -170,18 +183,27 @@ func TestLicensesSearchId(t *testing.T) {
 }
 
 func TestLicensesSearchBadSql(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	licenseModel := NewLicenseModel(ctx, s, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	if err != nil {
+		t.Fatalf("failed to load SQL test data: %v", err)
+	}
+	licenseModel := NewLicenseModel(ctx, zlog.S, conn)
 	_, err = licenseModel.GetLicenseByName("rubbish", false)
 	if err == nil {
 		t.Errorf("licenses.GetLicenseByName() error = did not get an error")

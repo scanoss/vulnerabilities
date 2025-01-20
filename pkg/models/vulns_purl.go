@@ -94,7 +94,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 			"cves c2 "+
 			"inner join nvd_match_criteria_ids nmci "+
 			"on "+
-			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
+			"nmci.match_criteria_id = ANY(c2.match_criteria_ids) "+
 			"where "+
 			"tscpe.purl = $1 "+
 			"and tscpe.cpe_id = sc.id "+

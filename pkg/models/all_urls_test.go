@@ -19,39 +19,39 @@ package models
 import (
 	"context"
 	"fmt"
-	"testing"
-
-	"github.com/scanoss/go-grpc-helper/pkg/grpc/database"
-
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
-	myconfig "scanoss.com/dependencies/pkg/config"
+	"github.com/jmoiron/sqlx"
+	"scanoss.com/vulnerabilities/pkg/config"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	"testing"
 )
 
 func TestAllUrlsSearch(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
 	if err != nil {
-		t.Fatalf("failed to load SQL test data: %v", err)
+		t.Fatalf("failed to load SQL test data: %+v", err)
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
-	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
-	}
+	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
-	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
+		NewGolangProjectModel(ctx, zlog.S, conn))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameType("tablestyle", "gem", "")
 	if err != nil {
@@ -125,29 +125,32 @@ func TestAllUrlsSearch(t *testing.T) {
 }
 
 func TestAllUrlsSearchVersion(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
-	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
-	}
+	s := ctxzap.Extract(ctx).Sugar()
+	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+		NewGolangProjectModel(ctx, s, conn))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameTypeVersion("tablestyle", "gem", "0.0.12")
 	if err != nil {
@@ -193,29 +196,36 @@ func TestAllUrlsSearchVersion(t *testing.T) {
 }
 
 func TestAllUrlsSearchVersionRequirement(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
+	s := ctxzap.Extract(ctx).Sugar()
+	myConfig, err := config.NewServerConfig(nil)
+
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+		NewGolangProjectModel(ctx, s, conn))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle", ">0.0.4")
 	if err != nil {
@@ -236,28 +246,31 @@ func TestAllUrlsSearchVersionRequirement(t *testing.T) {
 }
 
 func TestAllUrlsSearchNoProject(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
-	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
-	}
+	s := ctxzap.Extract(ctx).Sugar()
+	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
-	allUrlsModel := NewAllURLModel(ctx, s, conn, nil, NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+	allUrlsModel := NewAllURLModel(ctx, s, conn, nil, NewGolangProjectModel(ctx, s, conn))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameType("tablestyle", "gem", "0.0.8")
 	if err != nil {
@@ -270,29 +283,32 @@ func TestAllUrlsSearchNoProject(t *testing.T) {
 }
 
 func TestAllUrlsSearchNoLicense(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
-	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
-	}
+	s := ctxzap.Extract(ctx).Sugar()
+	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+		NewGolangProjectModel(ctx, s, conn))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle@0.0.8", "")
 	if err != nil {
@@ -305,25 +321,27 @@ func TestAllUrlsSearchNoLicense(t *testing.T) {
 }
 
 func TestAllUrlsSearchBadSql(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
-	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
-	defer CloseConn(conn)
-	myConfig, err := myconfig.NewServerConfig(nil)
+	db, err := sqlx.Connect("sqlite3", ":memory:")
 	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
+	defer CloseDB(db)
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer CloseConn(conn)
+	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
-	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn, myConfig), database.NewDBSelectContext(s, conn, myConfig.Database.Trace))
+	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
+		NewGolangProjectModel(ctx, zlog.S, conn))
 	_, err = allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle", "")
 	if err == nil {
 		t.Errorf("all_urls.GetURLsByPurlString() error = did not get an error")
@@ -337,7 +355,7 @@ func TestAllUrlsSearchBadSql(t *testing.T) {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
 	// Load some tables (leaving out projects)
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"./tests/mines.sql", "./tests/all_urls.sql", "./tests/licenses.sql", "./tests/versions.sql"})
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"./tests/mines.sql", "./tests/all_urls.sql", "./tests/licenses.sql", "./tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}

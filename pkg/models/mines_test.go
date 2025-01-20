@@ -19,6 +19,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"testing"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
@@ -27,21 +28,27 @@ import (
 )
 
 func TestMines(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
-	err = loadSQLData(db, ctx, conn, "./tests/mines.sql")
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
+	s := ctxzap.Extract(ctx).Sugar()
 	mine := NewMineModel(ctx, s, conn)
 	var purlType = "maven"
 	mineIds, err := mine.GetMineIdsByPurlType(purlType)
@@ -82,17 +89,27 @@ func TestMines(t *testing.T) {
 
 // TestMinesBadSql test bad queries without creating/loading the mines table.
 func TestMinesBadSql(t *testing.T) {
+	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	ctx := ctxzap.ToContext(context.Background(), zlog.L)
-	s := ctxzap.Extract(ctx).Sugar()
-	db := sqliteSetup(t) // Setup SQL Lite DB
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseDB(db)
-	conn := sqliteConn(t, ctx, db) // Get a connection from the pool
+	conn, err := db.Connx(ctx) // Get a connection from the pool
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 	defer CloseConn(conn)
+	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
+	if err != nil {
+		t.Fatalf("failed to load SQL test data: %v", err)
+	}
+	s := ctxzap.Extract(ctx).Sugar()
 	mine := NewMineModel(ctx, s, conn)
 	purlType := "NONEXISTENT"
 	mineIds, err := mine.GetMineIdsByPurlType(purlType)
