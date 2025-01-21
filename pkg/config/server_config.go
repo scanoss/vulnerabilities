@@ -71,6 +71,8 @@ type ServerConfig struct {
 	}
 	Vulnerabilities struct {
 		OSVBaseURL string `env:"OSV_BASE_URL"`
+		OSV        bool   `env:"OSV"`
+		SCANOSS    bool   `env:"SCANOSS"`
 	}
 }
 
