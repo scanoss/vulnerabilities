@@ -17,6 +17,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 )
@@ -69,10 +70,15 @@ type ServerConfig struct {
 	Components struct {
 		CommitMissing bool `env:"COMP_COMMIT_MISSING"` // Write component details to the DB if they are looked up live
 	}
-	Vulnerabilities struct {
-		OSVBaseURL string `env:"OSV_BASE_URL"`
-		OSV        bool   `env:"OSV"`
-		SCANOSS    bool   `env:"SCANOSS"`
+	Source struct {
+		OSV struct {
+			APIBaseURL  string `env:"OSV_API_BASE_URL"`
+			InfoBaseURL string `env:"OSV_INFO_BASE_URL"`
+			Enabled     bool   `env:"OSV_SOURCE_ENABLED"`
+		}
+		SCANOSS struct {
+			Enabled bool `env:"SCANOSS_SOURCE_ENABLED"`
+		}
 	}
 }
 
@@ -111,5 +117,27 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Telemetry.Enabled = false
 	cfg.Telemetry.OltpExporter = "0.0.0.0:4317" // Default OTEL OLTP gRPC Exporter endpoint
 	cfg.Components.CommitMissing = false
-	cfg.Vulnerabilities.OSVBaseURL = "https://api.osv.dev/v1"
+	cfg.Source.OSV.APIBaseURL = "https://api.osv.dev/v1"
+	cfg.Source.OSV.InfoBaseURL = "https://test.osv.dev/vulnerability"
+	cfg.Source.OSV.Enabled = true
+	cfg.Source.SCANOSS.Enabled = true
+}
+
+func IsValidConfig(cfg *ServerConfig) error {
+
+	// Check vulnerability source
+	if !cfg.Source.SCANOSS.Enabled && !cfg.Source.OSV.Enabled {
+		return errors.New("At least one vulnerability source provider (SCANOSS or OSV) must be enabled")
+	}
+
+	// Check OSV source config
+	if cfg.Source.OSV.Enabled {
+		if cfg.Source.OSV.APIBaseURL == "" {
+			return errors.New("OSV API Base URL cannot be empty")
+		}
+		if cfg.Source.OSV.InfoBaseURL == "" {
+			return errors.New("OSV Info  Base URL cannot be empty")
+		}
+	}
+	return nil
 }
