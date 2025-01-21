@@ -43,17 +43,19 @@ type OSVRequest struct {
 }
 
 type OSVUseCase struct {
-	OSVBaseURL string
-	maxWorkers int
-	semaphore  chan struct{} // Used to limit concurrent requests
-	client     *http.Client  // Single shared
+	OSVAPIBaseURL  string
+	OSVInfoBaseURL string
+	maxWorkers     int
+	semaphore      chan struct{} // Used to limit concurrent requests
+	client         *http.Client  // Single shared
 }
 
-func NewOSVUseCase(OSVBaseUrl string) *OSVUseCase {
+func NewOSVUseCase(OSVAPIBaseUrl string, OSVInfoBaseURL string) *OSVUseCase {
 	return &OSVUseCase{
-		OSVBaseURL: OSVBaseUrl,
-		maxWorkers: 4,
-		semaphore:  make(chan struct{}, 4),
+		OSVAPIBaseURL:  OSVAPIBaseUrl,
+		OSVInfoBaseURL: OSVInfoBaseURL,
+		maxWorkers:     4,
+		semaphore:      make(chan struct{}, 4),
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -61,7 +63,6 @@ func NewOSVUseCase(OSVBaseUrl string) *OSVUseCase {
 }
 
 func (us OSVUseCase) Execute(dto dtos.VulnerabilityRequestDTO) dtos.VulnerabilityOutput {
-	zlog.S.Infof("OSV Base URL: %s", us.OSVBaseURL)
 
 	var osvRequests []OSVRequest
 	for _, element := range dto.Purls {
@@ -121,7 +122,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (osvResponseDTO dtos.
 		return dtos.VulnerabilityPurlOutput{}
 	}
 
-	req, err := http.NewRequest("POST", us.OSVBaseURL+"/query", bytes.NewBuffer(out))
+	req, err := http.NewRequest("POST", us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
 	if err != nil {
 		zlog.S.Errorf("Failed to create HTTP request: %s", err)
 		return dtos.VulnerabilityPurlOutput{}
@@ -189,6 +190,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 			Published: utils.OnlyDate(vul.Published),
 			Modified:  utils.OnlyDate(vul.Modified),
 			Source:    "OSV",
+			Url:       us.OSVInfoBaseURL + "/" + cve,
 		})
 	}
 	return vulnerabilities
