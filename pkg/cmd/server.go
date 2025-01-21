@@ -69,7 +69,12 @@ func getConfig() (*myconfig.ServerConfig, error) {
 			return nil, err
 		}
 	}
+
 	myConfig, err := myconfig.NewServerConfig(feeders)
+
+	// Check for minimum configuration required
+	err = myconfig.IsValidConfig(myConfig)
+
 	return myConfig, err
 }
 
