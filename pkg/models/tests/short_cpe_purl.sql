@@ -43,7 +43,7 @@ INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (36858, 6062, 'pkg:rpm/opensuse/lxd', 'cpe:2.3:a:canonical:lxd');
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (54486, 11962, 'pkg:github/maas/maas', 'cpe:2.3:a:canonical:metal_as_a_service');
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (54486, 18047, 'pkg:deb/ubuntu/maas', 'cpe:2.3:a:canonical:metal_as_a_service');
-INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (20819, 24539, 'pkg:github/tseliot/screen-resolution-extra', 'cpe:2.3:a:canonical:screen-resolution-extra');
+INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (158765, 24539, 'pkg:github/tseliot/screen-resolution-extra', 'cpe:2.3:a:canonical:screen-resolution-extra');
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (20819, 2595, 'pkg:deb/ubuntu/screen-resolution-extra', 'cpe:2.3:a:canonical:screen-resolution-extra');
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (48168, 14558, 'pkg:github/selinuxproject/selinux', 'cpe:2.3:a:canonical:selinux');
 INSERT INTO "t_short_cpe_purl_exported" ("cpe_id", "purl_id", "purl", "short_cpe") VALUES (48168, 23242, 'pkg:deb/ubuntu/selinux', 'cpe:2.3:a:canonical:selinux');
