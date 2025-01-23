@@ -87,18 +87,14 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
 	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
-			"from "+
-			"t_short_cpe_purl_exported tscpe, "+
-			"short_cpes sc, "+
-			"cves c2 "+
-			"inner join nvd_match_criteria_ids nmci "+
-			"on "+
-			"nmci.match_criteria_id = ANY(c2.match_criteria_ids) "+
-			"where "+
-			"tscpe.purl = $1 "+
-			"and tscpe.cpe_id = sc.id "+
-			"and sc.id = nmci.short_cpe_id;", purlName)
+		"SELECT c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
+			"FROM t_short_cpe_purl_exported tscpe "+
+			"INNER JOIN cpes c ON tscpe.cpe_id = c.id "+
+			"INNER JOIN nvd_match_criteria_ids nmci ON trim(CAST(nmci.cpe_ids AS TEXT), '{}') LIKE '%' || tscpe.cpe_id || '%' "+
+			"INNER JOIN cves c2 ON trim(CAST(nmci.cpe_ids AS TEXT), '{}') LIKE  '%' || nmci.match_criteria_id || '%' "+
+			"WHERE "+
+			"tscpe.purl = $1",
+		purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
