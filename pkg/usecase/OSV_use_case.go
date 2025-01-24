@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/utils"
-	"strings"
 	"sync"
 	"time"
 
@@ -160,7 +159,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	}
 
 	response := dtos.VulnerabilityPurlOutput{
-		Purl:            strings.Split(osvRequest.Package.Purl, "@")[0],
+		Purl:            osvRequest.Package.Purl,
 		Vulnerabilities: us.mapOSVVulnerabilities(OSVResponse.Vulns),
 	}
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2022 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ func (m *LicenseModel) GetLicenseByID(id int32) (License, error) {
 		return License{}, errors.New("please specify a valid License Name to query")
 	}
 	var license License
-	err := m.conn.SelectContext(m.ctx, &license,
+	err := m.conn.GetContext(m.ctx, &license,
 		"SELECT id, license_name, spdx_id, is_spdx FROM licenses"+
 			" WHERE id = $1",
 		id)
@@ -79,16 +79,16 @@ func (m *LicenseModel) GetLicenseByName(name string, create bool) (License, erro
 	}
 	var license License
 	m.s.Infof("CONNECTION GetLicenseByName %+v", m.conn)
-	err := m.conn.SelectContext(m.ctx, &license,
+	err := m.conn.GetContext(m.ctx, &license,
 		"SELECT id, license_name, spdx_id, is_spdx FROM licenses"+
 			" WHERE license_name = $1",
 		name)
-	if err != nil {
-		return License{}, fmt.Errorf("license not found: %s", name)
-	}
 	if create && len(license.LicenseName) == 0 { // No license found and requested to create an entry
 		m.s.Infof("Creating license entry %s", name)
 		return m.saveLicense(name)
+	}
+	if err != nil {
+		return License{}, fmt.Errorf("license not found: %s", name)
 	}
 	return license, nil
 }

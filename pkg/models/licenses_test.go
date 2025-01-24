@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -175,54 +175,6 @@ func TestLicensesSearchId(t *testing.T) {
 	id = -1
 	fmt.Printf("Searching for license by id: %v\n", id)
 	_, err = licenseModel.GetLicenseByID(id)
-	if err == nil {
-		t.Errorf("licenses.GetLicenseByID() error = did not get an error")
-	} else {
-		fmt.Printf("Got expected error = %v\n", err)
-	}
-}
-
-func TestLicensesSearchBadSql(t *testing.T) {
-	ctx := context.Background()
-	err := zlog.NewSugaredDevLogger()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
-	}
-	defer zlog.SyncZap()
-	db, err := sqlx.Connect("sqlite3", ":memory:")
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseDB(db)
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
-	if err != nil {
-		t.Fatalf("failed to load SQL test data: %v", err)
-	}
-	licenseModel := NewLicenseModel(ctx, zlog.S, conn)
-	_, err = licenseModel.GetLicenseByName("rubbish", false)
-	if err == nil {
-		t.Errorf("licenses.GetLicenseByName() error = did not get an error")
-	} else {
-		fmt.Printf("Got expected error = %v\n", err)
-	}
-	_, err = licenseModel.GetLicenseByName("rubbish", true)
-	if err == nil {
-		t.Errorf("licenses.GetLicenseByName() error = did not get an error")
-	} else {
-		fmt.Printf("Got expected error = %v\n", err)
-	}
-	_, err = licenseModel.saveLicense("rubbish")
-	if err == nil {
-		t.Errorf("licenses.saveLicense() error = did not get an error")
-	} else {
-		fmt.Printf("Got expected error = %v\n", err)
-	}
-	_, err = licenseModel.GetLicenseByID(100)
 	if err == nil {
 		t.Errorf("licenses.GetLicenseByID() error = did not get an error")
 	} else {

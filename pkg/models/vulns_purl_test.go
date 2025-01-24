@@ -1,3 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * Copyright (C) 2018-2025 SCANOSS.COM
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package models
 
 import (
@@ -44,25 +60,6 @@ func TestGetVulnsByPurl(t *testing.T) {
 		want    []VulnsForPurl
 		wantErr bool
 	}{
-		//{
-		//	name:  "Searching cpes for purl: 'pkg:github/hapijs/call' without requirements",
-		//	input: inputGetVulnsForPurl{purl: "pkg:github/hapijs/call", requirement: ""},
-		//	want: []VulnsForPurl{{
-		//		Cve:      "CVE-2016-10543",
-		//		Severity: "MEDIUM",
-		//		Url:      "",
-		//		Summary:  "call is an HTTP router that is primarily used by the hapi framework. There exists a bug in call versions 2.0.1-3.0.1 that does not validate empty parameters, which could result in invalid input bypassing the route validation rules.",
-		//	}},
-		//}, {
-		//	name:  "Searching cpes for purl: 'pkg:github/hapijs/call' and requirements =1.0.0",
-		//	input: inputGetVulnsForPurl{purl: "pkg:github/hapijs/call", requirement: ""},
-		//	want: []VulnsForPurl{{
-		//		Cve:      "CVE-2016-10543",
-		//		Severity: "MEDIUM",
-		//		Url:      "",
-		//		Summary:  "call is an HTTP router that is primarily used by the hapi framework. There exists a bug in call versions 2.0.1-3.0.1 that does not validate empty parameters, which could result in invalid input bypassing the route validation rules.",
-		//	}},
-		//},
 		{
 			name:    "Searching cpes for broken purl",
 			input:   inputGetVulnsForPurl{purl: "pkag:gitasdhub/sadhapijs/caasdll@1.0asd.0", requirement: ""},

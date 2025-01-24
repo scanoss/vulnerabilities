@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,9 +60,9 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request dtos.Vulnerability
 		//VulnerabilitiesOutput
 		var item dtos.VulnerabilityPurlOutput
 
-		item.Purl = purl.Purl
+		item.Purl = purl.Purl + "@" + purl.Requirement
 		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(purl.Purl, purl.Requirement)
-		
+
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
 			problems = true
