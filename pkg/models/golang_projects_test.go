@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,13 @@ package models
 import (
 	"context"
 	"fmt"
+	pkggodevclient "github.com/guseggert/pkggodev-client"
 	"github.com/jmoiron/sqlx"
 	"scanoss.com/vulnerabilities/pkg/config"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"testing"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	pkggodevclient "github.com/guseggert/pkggodev-client"
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 func TestGolangProjectUrlsSearch(t *testing.T) {
@@ -45,18 +45,17 @@ func TestGolangProjectUrlsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/golang_project.sql"})
+	err = LoadTestSqlData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
-	golangProjModel := NewGolangProjectModel(ctx, s, conn)
+	golangProjModel := NewGolangProjectModel(ctx, zlog.S, conn, myConfig)
 
 	url, err := golangProjModel.GetGolangUrlsByPurlNameType("google.golang.org/grpc", "golang", "")
 	if err != nil {
@@ -127,18 +126,17 @@ func TestGolangProjectsSearchVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/golang_project.sql"})
+	err = LoadTestSqlData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("FAILED: failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
-	golangProjModel := NewGolangProjectModel(ctx, s, conn)
+	golangProjModel := NewGolangProjectModel(ctx, zlog.S, conn, myConfig)
 
 	url, err := golangProjModel.GetGolangUrlsByPurlNameTypeVersion("google.golang.org/grpc", "golang", "1.19.0")
 	if err != nil {
@@ -161,12 +159,14 @@ func TestGolangProjectsSearchVersion(t *testing.T) {
 	} else {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
+
 	_, err = golangProjModel.GetGolangUrlsByPurlNameTypeVersion("NONEXISTENT", "", "")
 	if err == nil {
 		t.Errorf("FAILED: golang_projects.GetGolangUrlsByPurlNameTypeVersion() error = did not get an error")
 	} else {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
+
 	_, err = golangProjModel.GetGolangUrlsByPurlNameTypeVersion("NONEXISTENT", "NONEXISTENT", "")
 	if err == nil {
 		t.Errorf("FAILED: golang_projects.GetGolangUrlsByPurlNameTypeVersion() error = did not get an error")
@@ -222,17 +222,16 @@ func TestGolangProjectsSearchVersionRequirement(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/golang_project.sql"})
+	err = LoadTestSqlData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
-	golangProjModel := NewGolangProjectModel(ctx, s, conn)
+	golangProjModel := NewGolangProjectModel(ctx, zlog.S, conn, myConfig)
 
 	url, err := golangProjModel.GetGoLangURLByPurlString("pkg:golang/google.golang.org/grpc", ">0.0.4")
 	if err != nil {
@@ -270,17 +269,16 @@ func TestGolangPkgGoDev(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/golang_project.sql"})
+	err = LoadTestSqlData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
-	golangProjModel := NewGolangProjectModel(ctx, s, conn)
+	golangProjModel := NewGolangProjectModel(ctx, zlog.S, conn, myConfig)
 
 	_, _, _, err = golangProjModel.queryPkgGoDev("", "")
 	if err == nil {
@@ -377,7 +375,6 @@ func TestGolangProjectsSearchBadSql(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/golang_project.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -387,7 +384,7 @@ func TestGolangProjectsSearchBadSql(t *testing.T) {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
-	golangProjModel := NewGolangProjectModel(ctx, s, conn)
+	golangProjModel := NewGolangProjectModel(ctx, s, conn, myConfig)
 
 	_, err = golangProjModel.GetGoLangURLByPurlString("pkg:golang/google.golang.org/grpc", "")
 	if err == nil {

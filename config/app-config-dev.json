@@ -10,5 +10,15 @@
     "User":   "scanoss",
     "Passwd": "secret123!",
     "Schema": "scanoss"
+  },
+  "Source": {
+    "OSV": {
+      "VulnerabilityInfoBaseUrl": "https://test.osv.dev/vulnerability",
+      "APIBaseUrl": "https://api.osv.dev/v1",
+      "Enabled": true
+    },
+    "SCANOSS": {
+      "Enabled": true
+    }
   }
 }

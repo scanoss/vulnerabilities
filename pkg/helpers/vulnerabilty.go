@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"scanoss.com/vulnerabilities/pkg/dtos"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 // Create a helper function to convert vulnerability to output DTO
@@ -38,9 +39,9 @@ func processVulnerabilities(uniqueVulnerabilities map[string]bool,
 	for _, osv := range input.Purls {
 		if _, exists := vulnerabilities[osv.Purl]; exists {
 			for _, vul := range osv.Vulnerabilities {
-				if !uniqueVulnerabilities[vul.Cve] {
+				if !uniqueVulnerabilities[osv.Purl+vul.Cve] {
 					vulnerability := toVulnerabilityOutput(vul)
-					uniqueVulnerabilities[vul.Cve] = true
+					uniqueVulnerabilities[osv.Purl+vul.Cve] = true
 					vulnerabilities[osv.Purl] = append(vulnerabilities[osv.Purl], vulnerability)
 				}
 			}
@@ -48,6 +49,7 @@ func processVulnerabilities(uniqueVulnerabilities map[string]bool,
 		}
 		vulnerabilities[osv.Purl] = osv.Vulnerabilities
 	}
+	zlog.S.Infof("UNIQUE VULNERABILITIES BY PURL + VERSION: %+v", uniqueVulnerabilities)
 }
 
 func MergeOSVAndLocalVulnerabilities(localVulnerabilities dtos.VulnerabilityOutput, OSVVulnerabilities dtos.VulnerabilityOutput) dtos.VulnerabilityOutput {

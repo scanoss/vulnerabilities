@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,9 +47,19 @@ func loadSqlData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn, filename str
 
 // LoadTestSqlData loads all the required test SQL files
 func LoadTestSqlData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn) error {
-	files := []string{"../models/tests/cpe.sql", "../models/tests/cpe_cve.sql", "../models/tests/cve.sql",
-		"../models/tests/purl.sql", "../models/tests/short_cpe.sql",
-		"../models/tests/versions.sql", "../models/tests/ndv_match_criteria_ids.sql", "../models/tests/short_cpe_purl.sql"}
+	files := []string{"../models/tests/cpe.sql",
+		"../models/tests/cpe_cve.sql",
+		"../models/tests/cve.sql",
+		"../models/tests/purl.sql",
+		"../models/tests/short_cpe.sql",
+		"../models/tests/versions.sql",
+		"../models/tests/ndv_match_criteria_ids.sql",
+		"../models/tests/short_cpe_purl.sql",
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/golang_projects.sql",
+	}
 	return loadTestSqlDataFiles(db, ctx, conn, files)
 }
 

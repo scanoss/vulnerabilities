@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	return allCpes, nil
 }
 
-//GetCpesByPurlStringVersion searches for CPEs of the specified Purl Name/Type and version
+// GetCpesByPurlStringVersion searches for CPEs of the specified Purl Name/Type and version
 func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")

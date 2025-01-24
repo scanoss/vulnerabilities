@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,10 +41,13 @@ type GolangProjects struct {
 }
 
 // NewGolangProjectModel creates a new instance of Golang Project Model.
-func NewGolangProjectModel(ctx context.Context, s *zap.SugaredLogger, conn *sqlx.Conn) *GolangProjects {
+func NewGolangProjectModel(ctx context.Context, s *zap.SugaredLogger, conn *sqlx.Conn, config *myconfig.ServerConfig) *GolangProjects {
 	return &GolangProjects{ctx: ctx, s: s, conn: conn,
-		ver: NewVersionModel(ctx, conn), lic: NewLicenseModel(ctx, s, conn), mine: NewMineModel(ctx, s, conn),
+		ver:     NewVersionModel(ctx, conn),
+		lic:     NewLicenseModel(ctx, s, conn),
+		mine:    NewMineModel(ctx, s, conn),
 		project: NewProjectModel(ctx, s, conn),
+		config:  config,
 	}
 }
 
@@ -105,7 +108,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameType(purlName, purlType, purlReq
 		return AllURL{}, fmt.Errorf("failed to query the golang projects table: %v", err)
 	}
 	m.s.Debugf("Found %v results for %v, %v.", len(allURLs), purlType, purlName)
-	/*if len(allURLs) == 0 { // Check pkg.go.dev for the latest data
+	if len(allURLs) == 0 { // Check pkg.go.dev for the latest data
 		m.s.Debugf("Checking PkgGoDev for live info...")
 		allURL, err := m.getLatestPkgGoDev(purlName, purlType, "")
 		if err == nil {
@@ -114,7 +117,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameType(purlName, purlType, purlReq
 		} else {
 			m.s.Infof("Ran into an issue looking up pkg.go.dev for: %v. Ignoring", purlName)
 		}
-	}*/
+	}
 
 	// Pick the most appropriate version to return
 	return pickOneUrl(m.s, m.project, allURLs, purlName, purlType, purlReq)
@@ -158,7 +161,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameTypeVersion(purlName, purlType, 
 			return allURL, err2 // Return the component details
 		}
 	}
-	/*if len(allURLs) == 0 { // Check pkg.go.dev for the latest data
+	if len(allURLs) == 0 { // Check pkg.go.dev for the latest data
 		m.s.Debugf("Checking PkgGoDev for live info...")
 		allURL, err := m.getLatestPkgGoDev(purlName, purlType, purlVersion)
 		if err == nil {
@@ -167,7 +170,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameTypeVersion(purlName, purlType, 
 		} else {
 			m.s.Infof("Ran into an issue looking up pkg.go.dev for: %v - %v. Ignoring", purlName, purlVersion)
 		}
-	}*/
+	}
 	// Pick the most appropriate version to return
 	return pickOneUrl(m.s, m.project, allURLs, purlName, purlType, "")
 }
@@ -253,6 +256,7 @@ func (m *GolangProjects) savePkg(allURL AllURL, version Version, license License
 // getLatestPkgGoDev retrieves the latest information about a Golang Package from https://pkg.go.dev
 // If requested (via config), it will commit that data to the Golang Projects table.
 func (m *GolangProjects) getLatestPkgGoDev(purlName, purlType, purlVersion string) (AllURL, error) {
+
 	allURL, pkg, latest, err := m.queryPkgGoDev(purlName, purlVersion)
 	if err != nil {
 		return allURL, err
@@ -261,6 +265,9 @@ func (m *GolangProjects) getLatestPkgGoDev(purlName, purlType, purlVersion strin
 	if err != nil {
 		return allURL, err
 	}
+
+	m.s.Infof("Getting license name: %s, %+v", cleansedLicense, m.config.Components.CommitMissing)
+
 	license, err := m.lic.GetLicenseByName(cleansedLicense, m.config.Components.CommitMissing)
 	if err != nil {
 		m.s.Warnf("No license details in DB for: %v, %+v", cleansedLicense, err)
@@ -291,11 +298,17 @@ func (m *GolangProjects) getLatestPkgGoDev(purlName, purlType, purlVersion strin
 
 // queryPkgGoDev retrieves the latest information about a Golang Package from https://pkg.go.dev
 func (m *GolangProjects) queryPkgGoDev(purlName, purlVersion string) (AllURL, *pkggodevclient.Package, bool, error) {
+
 	if len(purlName) == 0 {
 		m.s.Errorf("Please specify a valid Purl Name to query")
 		return AllURL{}, nil, false, errors.New("please specify a valid Purl Name to query")
 	}
 	client := pkggodevclient.New()
+
+	if client == nil {
+		return AllURL{}, nil, false, errors.New("failed to create pkg.go.dev client")
+	}
+
 	pkg := purlName
 	if len(purlVersion) > 0 {
 		pkg = fmt.Sprintf("%s@%s", purlName, purlVersion)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,11 +20,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"testing"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	_ "github.com/mattn/go-sqlite3"
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 func TestMines(t *testing.T) {
@@ -48,8 +47,7 @@ func TestMines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
-	mine := NewMineModel(ctx, s, conn)
+	mine := NewMineModel(ctx, zlog.S, conn)
 	var purlType = "maven"
 	mineIds, err := mine.GetMineIdsByPurlType(purlType)
 	if err != nil {
@@ -109,8 +107,7 @@ func TestMinesBadSql(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	s := ctxzap.Extract(ctx).Sugar()
-	mine := NewMineModel(ctx, s, conn)
+	mine := NewMineModel(ctx, zlog.S, conn)
 	purlType := "NONEXISTENT"
 	mineIds, err := mine.GetMineIdsByPurlType(purlType)
 	if err != nil {

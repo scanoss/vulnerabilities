@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2023 SCANOSS.COM
+ * Copyright (C) 2018-2025 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ func TestAllUrlsSearch(t *testing.T) {
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
-		NewGolangProjectModel(ctx, zlog.S, conn))
+		NewGolangProjectModel(ctx, zlog.S, conn, myConfig))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameType("tablestyle", "gem", "")
 	if err != nil {
@@ -150,7 +150,7 @@ func TestAllUrlsSearchVersion(t *testing.T) {
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn))
+		NewGolangProjectModel(ctx, s, conn, myConfig))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameTypeVersion("tablestyle", "gem", "0.0.12")
 	if err != nil {
@@ -225,7 +225,7 @@ func TestAllUrlsSearchVersionRequirement(t *testing.T) {
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn))
+		NewGolangProjectModel(ctx, s, conn, myConfig))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle", ">0.0.4")
 	if err != nil {
@@ -270,7 +270,7 @@ func TestAllUrlsSearchNoProject(t *testing.T) {
 	myConfig, err := config.NewServerConfig(nil)
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
-	allUrlsModel := NewAllURLModel(ctx, s, conn, nil, NewGolangProjectModel(ctx, s, conn))
+	allUrlsModel := NewAllURLModel(ctx, s, conn, nil, NewGolangProjectModel(ctx, s, conn, myConfig))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlNameType("tablestyle", "gem", "0.0.8")
 	if err != nil {
@@ -308,7 +308,7 @@ func TestAllUrlsSearchNoLicense(t *testing.T) {
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
-		NewGolangProjectModel(ctx, s, conn))
+		NewGolangProjectModel(ctx, s, conn, myConfig))
 
 	allUrls, err := allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle@0.0.8", "")
 	if err != nil {
@@ -341,7 +341,7 @@ func TestAllUrlsSearchBadSql(t *testing.T) {
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
-		NewGolangProjectModel(ctx, zlog.S, conn))
+		NewGolangProjectModel(ctx, zlog.S, conn, myConfig))
 	_, err = allUrlsModel.GetURLsByPurlString("pkg:gem/tablestyle", "")
 	if err == nil {
 		t.Errorf("all_urls.GetURLsByPurlString() error = did not get an error")
