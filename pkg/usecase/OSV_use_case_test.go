@@ -19,16 +19,7 @@ package usecase
 import (
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"testing"
-	"time"
 )
-
-func parseTime(t string) time.Time {
-	timeValue, err := time.Parse(time.DateOnly, "2023-04-28")
-	if err != nil {
-		panic(err)
-	}
-	return timeValue
-}
 
 func TestOSVUseCase(t *testing.T) {
 
