@@ -28,3 +28,11 @@ func (ct *OnlyDate) String() string {
 	t := time.Time(*ct)
 	return fmt.Sprintf("%q", t.Format(ctLayout))
 }
+
+func ParseTime(t string) time.Time {
+	timeValue, err := time.Parse(time.DateOnly, "2023-04-28")
+	if err != nil {
+		panic(err)
+	}
+	return timeValue
+}
