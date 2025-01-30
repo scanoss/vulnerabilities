@@ -7,6 +7,8 @@ toolchain go1.22.5
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/golobby/config/v3 v3.4.1
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/guseggert/pkggodev-client v0.0.0-20240318140526-cdb0034504cf
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.22
@@ -36,10 +38,8 @@ require (
 	github.com/golobby/dotenv v1.3.1 // indirect
 	github.com/golobby/env/v2 v2.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0 // indirect
-	github.com/guseggert/pkggodev-client v0.0.0-20240318140526-cdb0034504cf // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/phuslu/iploc v1.0.20230201 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect

@@ -28,6 +28,15 @@ unit_test: version ## Run all unit tests in the pkg folder
 	@echo "Running unit test framework..."
 	go test -v ./pkg/...
 
+lint_local: ## Run local instance of linting across the code base
+	golangci-lint run ./...
+
+lint_local_fix: ## Run local instance of linting across the code base including auto-fixing
+	golangci-lint run --fix ./...
+
+lint_docker: ## Run docker instance of linting across the code base
+	docker run --rm -v $(pwd):/app -v ~/.cache/golangci-lint/v1.50.1:/root/.cache -w /app golangci/golangci-lint:v1.50.1 golangci-lint run ./...
+
 ghcr_build: version  ## Build GitHub container image
 	@echo "Building GHCR container image..."
 	docker build --no-cache -t $(GHCR_FULLNAME) --platform linux/amd64 .
