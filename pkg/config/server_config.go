@@ -118,7 +118,7 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Telemetry.OltpExporter = "0.0.0.0:4317" // Default OTEL OLTP gRPC Exporter endpoint
 	cfg.Components.CommitMissing = false
 	cfg.Source.OSV.APIBaseURL = "https://api.osv.dev/v1"
-	cfg.Source.OSV.InfoBaseURL = "https://test.osv.dev/vulnerability"
+	cfg.Source.OSV.InfoBaseURL = "https://osv.dev/vulnerability"
 	cfg.Source.OSV.Enabled = true
 	cfg.Source.SCANOSS.Enabled = true
 }
