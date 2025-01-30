@@ -26,7 +26,6 @@ import (
 // Help with test details can be found here: https://go.dev/doc/code
 
 func TestPurlFromString(t *testing.T) {
-
 	w, _ := packageurl.FromString("pkg:maven/io.prestosql/presto-main@v1.0")
 	w2, _ := packageurl.FromString("pkg:npm/%40babel/core")
 	tests := []struct {
@@ -275,13 +274,13 @@ func TestPurlUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ProjectUrl(tt.pname, tt.ptype)
+			got, err := ProjectURL(tt.pname, tt.ptype)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("utils.ProjectUrl() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("utils.ProjectURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("utils.ProjectUrl() = %v, want %v", got, tt.want)
+				t.Errorf("utils.ProjectURL() = %v, want %v", got, tt.want)
 			}
 		})
 	}

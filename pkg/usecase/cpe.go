@@ -34,13 +34,12 @@ type CpeUseCase struct {
 	cpePurl *models.CpePurlModel
 }
 
-// NewCpe creates a new instance of the vulnerability Use Case
+// NewCpe creates a new instance of the vulnerability Use Case.
 func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig) *CpeUseCase {
 	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn)}
 }
 
 func (d CpeUseCase) GetCpes(request dtos.VulnerabilityRequestDTO) (dtos.CpeOutput, error) {
-
 	var out []dtos.CpePurlOutput
 	var problems = false
 	for _, purl := range request.Purls {
@@ -48,10 +47,10 @@ func (d CpeUseCase) GetCpes(request dtos.VulnerabilityRequestDTO) (dtos.CpeOutpu
 			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
 			continue
 		}
-		//VulnerabilitiesOutput
+		// VulnerabilitiesOutput
 		var item dtos.CpePurlOutput
 		item.Purl = purl.Purl
-		//lamo a la query
+		// lamo a la query
 		cpePurl, err := d.cpePurl.GetCpeByPurl(purl.Purl, purl.Requirement)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)

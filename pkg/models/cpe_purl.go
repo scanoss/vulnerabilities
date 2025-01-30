@@ -38,13 +38,12 @@ type CpePurl struct {
 	SemVer  string `db:"semver"`
 }
 
-// NewCpePurlModel creates a new instance of the CPE Purl Model
+// NewCpePurlModel creates a new instance of the CPE Purl Model.
 func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
 	return &CpePurlModel{ctx: ctx, conn: conn}
 }
 
-// GetCpeByPurl searches for CPE details of the specified Purl string (and optional requirement).
-// If version is specified in purl string the requirement is ignored
+// If version is specified in purl string the requirement is ignored.
 func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
@@ -56,7 +55,7 @@ func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, erro
 	}
 	purlVersion := purl.Version
 
-	purlString = utils.PurlRemoveFromVersionComponent(purlString) //Make sure to get the minimum purl pkg:github...
+	purlString = utils.PurlRemoveFromVersionComponent(purlString) // Make sure to get the minimum purl pkg:github...
 
 	if len(purlVersion) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
 		ver := utils.GetVersionFromReq(purlReq)
@@ -72,7 +71,7 @@ func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, erro
 	return m.GetCpesByPurlString(purlString, purlReq)
 }
 
-// GetCpesByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement)
+// GetCpesByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement).
 func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
@@ -104,7 +103,7 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	return allCpes, nil
 }
 
-// GetCpesByPurlStringVersion searches for CPEs of the specified Purl Name/Type and version
+// GetCpesByPurlStringVersion searches for CPEs of the specified Purl Name/Type and version.
 func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
@@ -129,7 +128,6 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 }
 
 func FilterCpesByRequirement(cpes []CpePurl, purlReq string) []CpePurl {
-
 	if len(cpes) == 0 {
 		zlog.S.Infof("No cpes in filterCpes()")
 		return []CpePurl{}

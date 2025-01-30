@@ -19,9 +19,10 @@ package models
 import (
 	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"reflect"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
 
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
@@ -43,7 +44,7 @@ func TestLicensesSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -130,7 +131,7 @@ func TestLicensesSearchId(t *testing.T) {
 	defer CloseConn(conn)
 	defer CloseDB(db)
 	defer zlog.SyncZap()
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}

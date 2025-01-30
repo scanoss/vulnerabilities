@@ -34,7 +34,7 @@ type VersionModel struct {
 }
 
 type Version struct {
-	Id          int32  `db:"id"`
+	ID          int32  `db:"id"`
 	VersionName string `db:"version_name"`
 	SemVer      string `db:"semver"`
 }
@@ -46,12 +46,12 @@ type PurlVersion struct {
 
 // TODO add cache for versions already searched for?
 
-// NewVersionModel creates a new instance of the Version Model
+// NewVersionModel creates a new instance of the Version Model.
 func NewVersionModel(ctx context.Context, conn *sqlx.Conn) *VersionModel {
 	return &VersionModel{ctx: ctx, conn: conn}
 }
 
-// GetVersionByName gets the given version from the versions table
+// GetVersionByName gets the given version from the versions table.
 func (m *VersionModel) GetVersionByName(name string, create bool) (Version, error) {
 	if len(name) == 0 {
 		zlog.S.Error("Please specify a valid Version Name to query")
@@ -73,7 +73,7 @@ func (m *VersionModel) GetVersionByName(name string, create bool) (Version, erro
 	return version, nil
 }
 
-// saveVersion writes the given version name to the versions table
+// saveVersion writes the given version name to the versions table.
 func (m *VersionModel) saveVersion(name string) (Version, error) {
 	if len(name) == 0 {
 		zlog.S.Error("Please specify a valid version Name to save")
@@ -91,5 +91,4 @@ func (m *VersionModel) saveVersion(name string) (Version, error) {
 		return m.GetVersionByName(name, false) // Search one more time for it, just in case someone else added it
 	}
 	return version, nil
-
 }

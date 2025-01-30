@@ -18,10 +18,12 @@ package models
 
 import (
 	"context"
-	"github.com/jmoiron/sqlx"
 	"reflect"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"testing"
+
+	"github.com/jmoiron/sqlx"
+
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 func TestGetVulnsByPurl(t *testing.T) {
@@ -43,7 +45,7 @@ func TestGetVulnsByPurl(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -83,7 +85,6 @@ func TestGetVulnsByPurl(t *testing.T) {
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("cpeModel.GetCpeByPurl() = %v, want %v", got, tt.want)
 			}
-			return
 		})
 	}
 }
@@ -107,7 +108,7 @@ func TestGetVulnsByPurlName(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -145,7 +146,7 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}

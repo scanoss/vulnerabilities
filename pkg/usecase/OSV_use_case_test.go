@@ -17,12 +17,12 @@
 package usecase
 
 import (
-	"scanoss.com/vulnerabilities/pkg/dtos"
 	"testing"
+
+	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
 func TestOSVUseCase(t *testing.T) {
-
 	testCases := []struct {
 		name  string
 		input dtos.VulnerabilityRequestDTO
@@ -48,10 +48,9 @@ func TestOSVUseCase(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := OSVUseCase.Execute(tc.input)
-			if len(r.Purls) <= 0 {
+			if len(r.Purls) == 0 {
 				t.Errorf("Expected Purls to have elements, got empty slice")
 			}
 		})
 	}
-
 }

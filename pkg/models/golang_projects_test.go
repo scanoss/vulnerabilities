@@ -19,14 +19,20 @@ package models
 import (
 	"context"
 	"fmt"
-	pkggodevclient "github.com/guseggert/pkggodev-client"
-	"github.com/jmoiron/sqlx"
-	"scanoss.com/vulnerabilities/pkg/config"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"testing"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	pkggodevclient "github.com/guseggert/pkggodev-client"
+	"github.com/jmoiron/sqlx"
+
+	"scanoss.com/vulnerabilities/pkg/config"
+	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
+
+const ScanossPapiURL = "github.com/scanoss/papi"
+const VersionV001 = "v0.0.1"
+const VersionV002 = "v0.0.2"
+const MITLicense = "MIT"
 
 func TestGolangProjectUrlsSearch(t *testing.T) {
 	ctx := context.Background()
@@ -45,7 +51,7 @@ func TestGolangProjectUrlsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -126,7 +132,7 @@ func TestGolangProjectsSearchVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -222,7 +228,7 @@ func TestGolangProjectsSearchVersionRequirement(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -253,109 +259,168 @@ func TestGolangProjectsSearchVersionRequirement(t *testing.T) {
 }
 
 func TestGolangPkgGoDev(t *testing.T) {
+	// Setup test environment and models
+	golangProjModel, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Run subtests
+	t.Run("QueryPkgGoDev", testQueryPkgGoDev(golangProjModel))
+	t.Run("GetLatestPkgGoDev", testGetLatestPkgGoDev(golangProjModel))
+	t.Run("SavePkg", testSavePkg(golangProjModel))
+}
+
+// setupTestEnvironment creates the test environment and returns cleanup function.
+func setupTestEnvironment(t *testing.T) (*GolangProjects, func()) {
+	t.Helper()
 	ctx := context.Background()
+
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
-	defer zlog.SyncZap()
+
 	db, err := sqlx.Connect("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer CloseDB(db)
-	conn, err := db.Connx(ctx) // Get a connection from the pool
+
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
+
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	myConfig.Components.CommitMissing = true
+
 	golangProjModel := NewGolangProjectModel(ctx, zlog.S, conn, myConfig)
 
-	_, _, _, err = golangProjModel.queryPkgGoDev("", "")
-	if err == nil {
-		t.Errorf("FAILED: golang_projects.queryPkgGoDev() error = did not get an error")
+	cleanup := func() {
+		CloseConn(conn)
+		CloseDB(db)
+		zlog.SyncZap()
 	}
 
-	url, err := golangProjModel.getLatestPkgGoDev("google.golang.org/grpc", "golang", "v0.0.0-201910101010-s3333")
-	if err != nil {
-		t.Errorf("FAILED: golang_projects.getLatestPkgGoDev() error = %v", err)
-	}
-	if len(url.PurlName) == 0 {
-		t.Errorf("FAILED: golang_projects.getLatestPkgGoDev() No URLs returned from query")
-	}
-	fmt.Printf("Golang URL Version: %#v\n", url)
+	return golangProjModel, cleanup
+}
 
-	url, err = golangProjModel.getLatestPkgGoDev("github.com/scanoss/papi", "golang", "v0.0.3")
-	if err != nil {
-		t.Errorf("FAILED: golang_projects.getLatestPkgGoDev() error = %v", err)
+func testQueryPkgGoDev(model *GolangProjects) func(t *testing.T) {
+	return func(t *testing.T) {
+		_, _, _, err := model.queryPkgGoDev("", "")
+		if err == nil {
+			t.Error("FAILED: golang_projects.queryPkgGoDev() error = did not get an error")
+		}
 	}
-	if len(url.PurlName) == 0 {
-		t.Errorf("FAILED: golang_projects.getLatestPkgGoDev() No URLs returned from query")
-	}
-	fmt.Printf("Golang URL Version: %#v\n", url)
+}
 
-	var allUrl AllURL
-	var license License
-	var version Version
-	fmt.Printf("SavePkg: %#v - %#v - %#v", allUrl, license, version)
-	err = golangProjModel.savePkg(allUrl, version, license, nil)
-	if err == nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = did not get an error")
+func testGetLatestPkgGoDev(model *GolangProjects) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run("GRPC Package", func(t *testing.T) {
+			url, err := model.getLatestPkgGoDev("google.golang.org/grpc", "golang", "v0.0.0-201910101010-s3333")
+			if err != nil {
+				t.Errorf("error = %v", err)
+			}
+			if len(url.PurlName) == 0 {
+				t.Error("No URLs returned from query")
+			}
+		})
+
+		t.Run("Scanoss Package", func(t *testing.T) {
+			url, err := model.getLatestPkgGoDev(ScanossPapiURL, "golang", "v0.0.3")
+			if err != nil {
+				t.Errorf("error = %v", err)
+			}
+			if len(url.PurlName) == 0 {
+				t.Error("No URLs returned from query")
+			}
+		})
 	}
-	allUrl.PurlName = "github.com/scanoss/papi"
-	err = golangProjModel.savePkg(allUrl, version, license, nil)
-	if err == nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = did not get an error")
+}
+
+func testSavePkg(model *GolangProjects) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run("Empty URL", func(t *testing.T) {
+			var allURL AllURL
+			var license License
+			var version Version
+
+			err := model.savePkg(allURL, version, license, nil)
+			if err == nil {
+				t.Error("expected error with empty URL")
+			}
+		})
+
+		t.Run("Missing MineID", func(t *testing.T) {
+			allURL := AllURL{PurlName: ScanossPapiURL}
+			var license License
+			var version Version
+
+			err := model.savePkg(allURL, version, license, nil)
+			if err == nil {
+				t.Error("expected error with missing MineID")
+			}
+		})
+
+		t.Run("Valid Package", func(t *testing.T) {
+			allURL, version, license, comp := createValidTestData()
+			err := model.savePkg(allURL, version, license, &comp)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+
+		t.Run("Updated Version", func(t *testing.T) {
+			allURL, version, license, comp := createValidTestData()
+			allURL.Version = VersionV002
+			version.VersionName = VersionV002
+			comp.Version = VersionV002
+
+			err := model.savePkg(allURL, version, license, &comp)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
 	}
-	allUrl.MineID = 45
-	err = golangProjModel.savePkg(allUrl, version, license, nil)
-	if err == nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = did not get an error")
+}
+
+func createValidTestData() (AllURL, Version, License, pkggodevclient.Package) {
+	allURL := AllURL{
+		PurlName: ScanossPapiURL,
+		MineID:   45,
+		Version:  VersionV001,
 	}
-	allUrl.Version = "v0.0.1"
-	version.VersionName = "v0.0.1"
-	version.Id = 5958021
-	err = golangProjModel.savePkg(allUrl, version, license, nil)
-	if err == nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = did not get an error")
+
+	version := Version{
+		VersionName: VersionV001,
+		ID:          5958021,
 	}
-	license.LicenseName = "MIT"
-	license.ID = 5614
-	err = golangProjModel.savePkg(allUrl, version, license, nil)
-	if err == nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = did not get an error")
+
+	license := License{
+		LicenseName: MITLicense,
+		ID:          5614,
 	}
-	var comp pkggodevclient.Package
-	comp.Package = "github.com/scanoss/papi"
-	comp.IsPackage = true
-	comp.IsModule = true
-	comp.Version = "v0.0.1"
-	comp.License = "MIT"
-	comp.HasRedistributableLicense = true
-	comp.HasStableVersion = true
-	comp.HasTaggedVersion = true
-	comp.HasValidGoModFile = true
-	comp.Repository = "github.com/scanoss/papi"
-	err = golangProjModel.savePkg(allUrl, version, license, &comp)
-	if err != nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = %v", err)
+
+	comp := pkggodevclient.Package{
+		Package:                   ScanossPapiURL,
+		IsPackage:                 true,
+		IsModule:                  true,
+		Version:                   VersionV001,
+		License:                   MITLicense,
+		HasRedistributableLicense: true,
+		HasStableVersion:          true,
+		HasTaggedVersion:          true,
+		HasValidGoModFile:         true,
+		Repository:                ScanossPapiURL,
 	}
-	allUrl.Version = "v0.0.2"
-	version.VersionName = "v0.0.2"
-	comp.Version = "v0.0.2"
-	err = golangProjModel.savePkg(allUrl, version, license, &comp)
-	if err != nil {
-		t.Errorf("FAILED: golangProjModel.savePkg() error = %v", err)
-	}
+
+	return allURL, version, license, comp
 }
 
 func TestGolangProjectsSearchBadSql(t *testing.T) {

@@ -19,11 +19,13 @@ package models
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/jmoiron/sqlx"
+
 	"scanoss.com/vulnerabilities/pkg/config"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
-	"testing"
 )
 
 func TestAllUrlsSearch(t *testing.T) {
@@ -43,11 +45,21 @@ func TestAllUrlsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/projects.sql",
+		"../models/tests/golang_projects.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/versions.sql",
+	})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %+v", err)
 	}
 	myConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load server config: %+v", err)
+	}
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
@@ -141,12 +153,22 @@ func TestAllUrlsSearchVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/projects.sql",
+		"../models/tests/golang_projects.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/versions.sql",
+	})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when loading config", err)
+	}
 	myConfig.Components.CommitMissing = true
 	myConfig.Database.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
@@ -212,7 +234,14 @@ func TestAllUrlsSearchVersionRequirement(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/projects.sql",
+		"../models/tests/golang_projects.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/versions.sql",
+	})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -262,12 +291,22 @@ func TestAllUrlsSearchNoProject(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/projects.sql",
+		"../models/tests/golang_projects.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/versions.sql",
+	})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load Config: %v", err)
+	}
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, nil, NewGolangProjectModel(ctx, s, conn, myConfig))
@@ -299,12 +338,22 @@ func TestAllUrlsSearchNoLicense(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/all_urls.sql", "../models/tests/mines.sql", "../models/tests/projects.sql", "../models/tests/golang_projects.sql", "../models/tests/licenses.sql", "../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{
+		"../models/tests/all_urls.sql",
+		"../models/tests/mines.sql",
+		"../models/tests/projects.sql",
+		"../models/tests/golang_projects.sql",
+		"../models/tests/licenses.sql",
+		"../models/tests/versions.sql",
+	})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load Config: %v", err)
+	}
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, s, conn, NewProjectModel(ctx, s, conn),
@@ -338,6 +387,9 @@ func TestAllUrlsSearchBadSql(t *testing.T) {
 	}
 	defer CloseConn(conn)
 	myConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load Config: %v", err)
+	}
 	myConfig.Components.CommitMissing = true
 	myConfig.App.Trace = true
 	allUrlsModel := NewAllURLModel(ctx, zlog.S, conn, NewProjectModel(ctx, zlog.S, conn),
@@ -355,7 +407,7 @@ func TestAllUrlsSearchBadSql(t *testing.T) {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
 	// Load some tables (leaving out projects)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"./tests/mines.sql", "./tests/all_urls.sql", "./tests/licenses.sql", "./tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"./tests/mines.sql", "./tests/all_urls.sql", "./tests/licenses.sql", "./tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}

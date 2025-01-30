@@ -21,10 +21,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	pkggodevclient "github.com/guseggert/pkggodev-client"
 	"github.com/jmoiron/sqlx"
 	"github.com/package-url/packageurl-go"
 	"go.uber.org/zap"
+
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
@@ -120,7 +122,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameType(purlName, purlType, purlReq
 	}
 
 	// Pick the most appropriate version to return
-	return pickOneUrl(m.s, m.project, allURLs, purlName, purlType, purlReq)
+	return pickOneURL(m.s, m.project, allURLs, purlName, purlType, purlReq)
 }
 
 // GetGolangUrlsByPurlNameTypeVersion searches Golang Projects for specified Purl, Type and Version.
@@ -153,7 +155,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameTypeVersion(purlName, purlType, 
 	}
 	m.s.Debugf("Found %v results for %v, %v.", len(allURLs), purlType, purlName)
 	if len(allURLs) > 0 { // We found an entry. Let's check if it has license data
-		allURL, err2 := pickOneUrl(m.s, m.project, allURLs, purlName, purlType, "")
+		allURL, err2 := pickOneURL(m.s, m.project, allURLs, purlName, purlType, "")
 		if len(allURL.License) == 0 { // No license data found. Need to search for live info
 			m.s.Debugf("Couldn't find license data for component. Need to search live data")
 			allURLs = allURLs[:0]
@@ -172,7 +174,7 @@ func (m *GolangProjects) GetGolangUrlsByPurlNameTypeVersion(purlName, purlType, 
 		}
 	}
 	// Pick the most appropriate version to return
-	return pickOneUrl(m.s, m.project, allURLs, purlName, purlType, "")
+	return pickOneURL(m.s, m.project, allURLs, purlName, purlType, "")
 }
 
 // savePkg writes the given package details to the Golang Projects table.
@@ -187,7 +189,7 @@ func (m *GolangProjects) savePkg(allURL AllURL, version Version, license License
 		m.s.Error("Please specify a valid mine id to save")
 		return errors.New("please specify a valid mine id to save")
 	}
-	if version.Id <= 0 || len(version.VersionName) == 0 {
+	if version.ID <= 0 || len(version.VersionName) == 0 {
 		m.s.Error("Please specify a valid version to save")
 		return errors.New("please specify a valid version to save")
 	}
@@ -224,7 +226,7 @@ func (m *GolangProjects) savePkg(allURL AllURL, version Version, license License
 				" repository = $13, is_indexed = $14, purl_name = $15, mine_id = $16"+
 				" WHERE purl_name = $17 AND version = $18"+
 				" RETURNING purl_name",
-			allURL.Component, allURL.Version, version.Id, comp.Published,
+			allURL.Component, allURL.Version, version.ID, comp.Published,
 			comp.IsModule, comp.IsPackage, license.LicenseName, license.ID, comp.HasValidGoModFile,
 			comp.HasRedistributableLicense, comp.HasTaggedVersion, comp.HasStableVersion,
 			comp.Repository, true, allURL.PurlName, allURL.MineID,
@@ -239,7 +241,7 @@ func (m *GolangProjects) savePkg(allURL AllURL, version Version, license License
 				" has_stable_version, repository, is_indexed, purl_name, mine_id, index_timestamp)"+
 				" VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"+
 				" RETURNING purl_name",
-			allURL.Component, allURL.Version, version.Id, comp.Published,
+			allURL.Component, allURL.Version, version.ID, comp.Published,
 			comp.IsModule, comp.IsPackage, license.LicenseName, license.ID, comp.HasValidGoModFile,
 			comp.HasRedistributableLicense, comp.HasTaggedVersion, comp.HasStableVersion,
 			comp.Repository, true, allURL.PurlName, allURL.MineID, "",
@@ -256,7 +258,6 @@ func (m *GolangProjects) savePkg(allURL AllURL, version Version, license License
 // getLatestPkgGoDev retrieves the latest information about a Golang Package from https://pkg.go.dev
 // If requested (via config), it will commit that data to the Golang Projects table.
 func (m *GolangProjects) getLatestPkgGoDev(purlName, purlType, purlVersion string) (AllURL, error) {
-
 	allURL, pkg, latest, err := m.queryPkgGoDev(purlName, purlVersion)
 	if err != nil {
 		return allURL, err
@@ -298,7 +299,6 @@ func (m *GolangProjects) getLatestPkgGoDev(purlName, purlType, purlVersion strin
 
 // queryPkgGoDev retrieves the latest information about a Golang Package from https://pkg.go.dev
 func (m *GolangProjects) queryPkgGoDev(purlName, purlVersion string) (AllURL, *pkggodevclient.Package, bool, error) {
-
 	if len(purlName) == 0 {
 		m.s.Errorf("Please specify a valid Purl Name to query")
 		return AllURL{}, nil, false, errors.New("please specify a valid Purl Name to query")

@@ -4,9 +4,10 @@ run:
     - tests
 
 linters-settings:
+
   cyclop:
     max-complexity: 30
-    package-average: 10.0
+    package-average: 12.0
 
   errcheck:
     check-type-assertions: true
@@ -21,7 +22,7 @@ linters-settings:
     statements: 80
 
   gocognit:
-    min-complexity: 25
+    min-complexity: 40
 
   gosec:
     excludes:

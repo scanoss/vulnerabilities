@@ -18,6 +18,7 @@ package config
 
 import (
 	"errors"
+
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 )
@@ -99,7 +100,7 @@ func NewServerConfig(feeders []config.Feeder) (*ServerConfig, error) {
 	return &cfg, nil
 }
 
-// setServerConfigDefaults attempts to set reasonable defaults for the server config
+// setServerConfigDefaults attempts to set reasonable defaults for the server config.
 func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.App.Name = "SCANOSS Vulnerability Server"
 	cfg.App.GRPCPort = defaultGrpcPort
@@ -124,10 +125,9 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 }
 
 func IsValidConfig(cfg *ServerConfig) error {
-
 	// Check vulnerability source
 	if !cfg.Source.SCANOSS.Enabled && !cfg.Source.OSV.Enabled {
-		return errors.New("At least one vulnerability source provider (SCANOSS or OSV) must be enabled")
+		return errors.New("at least one vulnerability source provider (SCANOSS or OSV) must be enabled")
 	}
 
 	// Check OSV source config

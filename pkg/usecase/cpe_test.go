@@ -46,7 +46,7 @@ func TestGetCpeUseCase(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer models.CloseConn(conn)
-	err = models.LoadTestSqlData(db, ctx, conn)
+	err = models.LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when loading test data", err)
 	}
@@ -79,7 +79,7 @@ func TestGetCpeUseCase(t *testing.T) {
 	}
 	fmt.Printf("cpes response: %+v\n", vulns)
 
-	//Broken purl
+	// Broken purl
 	var vulnRequestDataBad = `
 		{
 		  "purls": [
