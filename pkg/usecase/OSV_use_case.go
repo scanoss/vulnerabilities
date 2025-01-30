@@ -23,10 +23,11 @@ import (
 	"io"
 	_ "log"
 	"net/http"
-	"scanoss.com/vulnerabilities/pkg/dtos"
-	"scanoss.com/vulnerabilities/pkg/utils"
 	"sync"
 	"time"
+
+	"scanoss.com/vulnerabilities/pkg/dtos"
+	"scanoss.com/vulnerabilities/pkg/utils"
 
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
@@ -44,15 +45,14 @@ type OSVRequest struct {
 type OSVUseCase struct {
 	OSVAPIBaseURL  string
 	OSVInfoBaseURL string
-	maxWorkers     int
 	semaphore      chan struct{} // Used to limit concurrent requests
 	client         *http.Client  // Single shared
 }
 
-func NewOSVUseCase(OSVAPIBaseUrl string, OSVInfoBaseURL string) *OSVUseCase {
+func NewOSVUseCase(osvAPIBaseURL string, osvInfoBaseURL string) *OSVUseCase {
 	return &OSVUseCase{
-		OSVAPIBaseURL:  OSVAPIBaseUrl,
-		OSVInfoBaseURL: OSVInfoBaseURL,
+		OSVAPIBaseURL:  osvAPIBaseURL,
+		OSVInfoBaseURL: osvInfoBaseURL,
 		semaphore:      make(chan struct{}, 4),
 		client: &http.Client{
 			Timeout: 10 * time.Second,
@@ -123,7 +123,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 		return dtos.VulnerabilityPurlOutput{}, err
 	}
 
-	req, err := http.NewRequest("POST", us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
+	req, err := http.NewRequest(http.MethodPost, us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
 	if err != nil {
 		zlog.S.Errorf("Failed to create HTTP request: %s", err)
 		return dtos.VulnerabilityPurlOutput{}, err
@@ -138,7 +138,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	}
 
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+		err = Body.Close()
 		if err != nil {
 			zlog.S.Errorf("Failed to close HTTP response body: %s", err)
 		}
@@ -166,7 +166,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	return response, nil
 }
 
-// mapOSVVulnerabilities converts OSV vulnerabilities to the required DTO structure
+// mapOSVVulnerabilities converts OSV vulnerabilities to the required DTO structure.
 func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.VulnerabilitiesOutput {
 	vulnerabilities := make([]dtos.VulnerabilitiesOutput, 0, len(vulns))
 	for _, vul := range vulns {
@@ -184,14 +184,14 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 
 		// Map to VulnerabilitiesOutput DTO
 		vulnerabilities = append(vulnerabilities, dtos.VulnerabilitiesOutput{
-			Id:        vul.ID,
+			ID:        vul.ID,
 			Cve:       cve,
 			Summary:   vul.Summary,
 			Severity:  severity,
 			Published: utils.OnlyDate(vul.Published),
 			Modified:  utils.OnlyDate(vul.Modified),
 			Source:    "OSV",
-			Url:       us.OSVInfoBaseURL + "/" + cve,
+			URL:       us.OSVInfoBaseURL + "/" + cve,
 		})
 	}
 	return vulnerabilities

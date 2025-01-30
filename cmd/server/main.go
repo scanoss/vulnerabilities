@@ -24,7 +24,7 @@ import (
 	"scanoss.com/vulnerabilities/pkg/cmd"
 )
 
-// main starts the gRPC Vulneravility Service
+// main starts the gRPC Vulneravility Service.
 func main() {
 	// Launch the Vulnerabilities Server Service
 	if err := cmd.RunServer(); err != nil {

@@ -19,12 +19,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
+
 	"scanoss.com/vulnerabilities/pkg/utils"
-	"sort"
-	"strings"
 )
 
 type AllUrlsModel struct {
@@ -137,7 +139,7 @@ func (m *AllUrlsModel) GetURLsByPurlNameType(purlName, purlType, purlReq string)
 	}
 	m.s.Debugf("Found %v results for %v, %v.", len(allUrls), purlType, purlName)
 	// Pick one URL to return (checking for license details also)
-	return pickOneUrl(m.s, m.project, allUrls, purlName, purlType, purlReq)
+	return pickOneURL(m.s, m.project, allUrls, purlName, purlType, purlReq)
 }
 
 // GetURLsByPurlNameTypeVersion searches for component details of the specified Purl Name/Type and version.
@@ -165,11 +167,10 @@ func (m *AllUrlsModel) GetURLsByPurlNameTypeVersion(purlName, purlType, purlVers
 	}
 	m.s.Debugf("Found %v results for %v, %v.", len(allUrls), purlType, purlName)
 	// Pick one URL to return (checking for license details also)
-	return pickOneUrl(m.s, m.project, allUrls, purlName, purlType, "")
+	return pickOneURL(m.s, m.project, allUrls, purlName, purlType, "")
 }
 
-// pickOneUrl takes the potential matching component/versions and selects the most appropriate one.
-func pickOneUrl(s *zap.SugaredLogger, projModel *ProjectModel, allUrls []AllURL, purlName, purlType, purlReq string) (AllURL, error) {
+func pickOneURL(s *zap.SugaredLogger, projModel *ProjectModel, allUrls []AllURL, purlName, purlType, purlReq string) (AllURL, error) {
 	if len(allUrls) == 0 {
 		s.Infof("No component match (in urls) found for %v, %v", purlName, purlType)
 		return AllURL{}, nil
@@ -228,7 +229,7 @@ func pickOneUrl(s *zap.SugaredLogger, projModel *ProjectModel, allUrls []AllURL,
 		s.Errorf("Problem retrieving URL data for %v (%v, %v)", version, purlName, purlType)
 		return AllURL{}, fmt.Errorf("failed to retrieve specific URL version: %v", version)
 	}
-	url.URL, _ = utils.ProjectUrl(purlName, purlType)
+	url.URL, _ = utils.ProjectURL(purlName, purlType)
 
 	s.Debugf("Selected version: %#v", url)
 	if len(url.License) == 0 && projModel != nil { // Check for a project license if we don't have a component one

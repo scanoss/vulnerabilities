@@ -19,9 +19,10 @@ package models
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
-	"testing"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
@@ -43,7 +44,7 @@ func TestProjectsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/projects.sql", "../models/tests/mines.sql", "../models/tests/licenses.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/projects.sql", "../models/tests/mines.sql", "../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -80,9 +81,9 @@ func TestProjectsSearch(t *testing.T) {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
 	purlName = "tablestyle"
-	var mineId int32 = 1
-	fmt.Printf("Searching for project: %v - %v\n", purlName, mineId)
-	project, err := projectsModel.GetProjectByPurlName("tablestyle", mineId)
+	var mineID int32 = 1
+	fmt.Printf("Searching for project: %v - %v\n", purlName, mineID)
+	project, err := projectsModel.GetProjectByPurlName("tablestyle", mineID)
 	if err != nil {
 		t.Errorf("projects.GetProjectByPurlName() error = %+v", err)
 	}
@@ -92,18 +93,18 @@ func TestProjectsSearch(t *testing.T) {
 		fmt.Printf("Project: %v\n", project)
 	}
 	purlName = ""
-	mineId = -1
+	mineID = -1
 	fmt.Printf("Searching for project list: %v - %v\n", purlName, purlType)
-	_, err = projectsModel.GetProjectByPurlName(purlName, mineId)
+	_, err = projectsModel.GetProjectByPurlName(purlName, mineID)
 	if err == nil {
 		t.Errorf("projects.GetProjectByPurlName() error = did not get an error")
 	} else {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
 	purlName = "NONEXISTENT"
-	mineId = -1
+	mineID = -1
 	fmt.Printf("Searching for project list: %v - %v\n", purlName, purlType)
-	_, err = projectsModel.GetProjectByPurlName(purlName, mineId)
+	_, err = projectsModel.GetProjectByPurlName(purlName, mineID)
 	if err == nil {
 		t.Errorf("projects.GetProjectByPurlName() error = did not get an error")
 	} else {

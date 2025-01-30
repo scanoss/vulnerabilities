@@ -19,12 +19,15 @@ package models
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/jmoiron/sqlx"
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
-	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+const NonexistentPurl = "NONEXISTENT"
 
 func TestMines(t *testing.T) {
 	ctx := context.Background()
@@ -43,7 +46,7 @@ func TestMines(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -70,7 +73,7 @@ func TestMines(t *testing.T) {
 		t.Errorf("mines.GetMineIdByPurlType() found for %v = %v", purlType, mineIds)
 	}
 
-	purlType = "NONEXISTENT"
+	purlType = NonexistentPurl
 	mineIds, err = mine.GetMineIdsByPurlType(purlType)
 	if err != nil {
 		fmt.Printf("Mine ID not found: %v\n", err)
@@ -103,12 +106,12 @@ func TestMinesBadSql(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/mines.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 	mine := NewMineModel(ctx, zlog.S, conn)
-	purlType := "NONEXISTENT"
+	purlType := NonexistentPurl
 	mineIds, err := mine.GetMineIdsByPurlType(purlType)
 	if err != nil {
 		fmt.Printf("Mine ID not found: %v\n", err)

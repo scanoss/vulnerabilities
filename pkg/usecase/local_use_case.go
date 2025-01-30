@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 
 	"github.com/jmoiron/sqlx"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
@@ -29,9 +28,6 @@ import (
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
-var reRemoveConstraint = regexp.MustCompile(`>|<|=|>=|<=|~|!=`)
-var reExtractSemver = regexp.MustCompile(`(?P<version>\d*\.?\d*\.?\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
-
 type LocalVulnerabilityUseCase struct {
 	ctx        context.Context
 	conn       *sqlx.Conn
@@ -39,7 +35,7 @@ type LocalVulnerabilityUseCase struct {
 	versionMod *models.VersionModel
 }
 
-// NewLocalVulnerabilitiesUseCase creates a new instance of the vulnerability Use Case
+// NewLocalVulnerabilitiesUseCase creates a new instance of the vulnerability Use Case.
 func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig) *LocalVulnerabilityUseCase {
 	return &LocalVulnerabilityUseCase{ctx: ctx, conn: conn,
 		vulnsPurl:  models.NewVulnsForPurlModel(ctx, conn),
@@ -47,7 +43,6 @@ func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config
 }
 
 func (d LocalVulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityRequestDTO) (dtos.VulnerabilityOutput, error) {
-
 	var vulnOutputs []dtos.VulnerabilityPurlOutput
 
 	var problems = false
@@ -57,7 +52,7 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request dtos.Vulnerability
 			continue
 		}
 
-		//VulnerabilitiesOutput
+		// VulnerabilitiesOutput
 		var item dtos.VulnerabilityPurlOutput
 
 		item.Purl = purl.Purl + "@" + purl.Requirement
@@ -67,19 +62,18 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request dtos.Vulnerability
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
 			problems = true
 			continue
-			//TODO add a placeholder in the response?
+			// TODO add a placeholder in the response?
 		}
 
 		for _, cve := range vulnPurls {
-
 			var vulnerabilitiesForThisPurl dtos.VulnerabilitiesOutput
-			vulnerabilitiesForThisPurl.Id = cve.Cve
+			vulnerabilitiesForThisPurl.ID = cve.Cve
 			vulnerabilitiesForThisPurl.Cve = cve.Cve
 			vulnerabilitiesForThisPurl.Severity = cve.Severity
 			vulnerabilitiesForThisPurl.Modified = cve.Modified
 			vulnerabilitiesForThisPurl.Published = cve.Published
 			vulnerabilitiesForThisPurl.Summary = cve.Summary
-			vulnerabilitiesForThisPurl.Url = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", cve.Cve)
+			vulnerabilitiesForThisPurl.URL = fmt.Sprintf("https://nvd.nist.gov/vuln/detail/%s", cve.Cve)
 
 			vulnerabilitiesForThisPurl.Source = "NVD"
 			item.Vulnerabilities = append(item.Vulnerabilities, vulnerabilitiesForThisPurl)

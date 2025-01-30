@@ -20,10 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
+
 	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
-	"strings"
 )
 
 type VulnsForPurlModel struct {
@@ -34,7 +36,7 @@ type VulnsForPurlModel struct {
 type VulnsForPurl struct {
 	Cve       string         `db:"cve"`
 	Severity  string         `db:"severity"`
-	Url       string         `db:"url"`
+	URL       string         `db:"url"`
 	Published utils.OnlyDate `db:"published"`
 	Modified  utils.OnlyDate `db:"modified"`
 	Summary   string         `db:"summary"`
@@ -44,12 +46,12 @@ type OnlyPurl struct {
 	Purl string `db:"purl"`
 }
 
-// NewCpePurlModel creates a new instance of the CPE Purl Model
+// NewCpePurlModel creates a new instance of the CPE Purl Model.
 func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlModel {
 	return &VulnsForPurlModel{ctx: ctx, conn: conn}
 }
 
-// GetVulnsByPurl
+// GetVulnsByPurl.
 func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsForPurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
@@ -61,13 +63,12 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsF
 		return []VulnsForPurl{}, err
 	}
 
-	purlName := utils.PurlRemoveFromVersionComponent(purlString) //Remove everything after the component name
+	purlName := utils.PurlRemoveFromVersionComponent(purlString) // Remove everything after the component name
 
 	if len(purl.Version) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
 		ver := utils.GetVersionFromReq(purlReq)
 		if len(ver) > 0 {
 			purl.Version = ver // Switch to exact version search (faster)
-			purlReq = ""
 		}
 	}
 
@@ -77,7 +78,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsF
 	return m.GetVulnsByPurlName(purlName)
 }
 
-// GetUrlsByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement)
+// GetUrlsByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement).
 func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")

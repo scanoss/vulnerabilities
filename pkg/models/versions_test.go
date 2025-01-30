@@ -42,7 +42,7 @@ func TestVersionsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSqlDataFiles(db, ctx, conn, []string{"../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -96,7 +96,6 @@ func TestVersionsSearch(t *testing.T) {
 		t.Errorf("versions.GetVersionByName() No version returned from query")
 	}
 	fmt.Printf("Version: %#v\n", version)
-
 }
 
 func TestVersionsSearchBadSql(t *testing.T) {

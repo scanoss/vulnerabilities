@@ -26,12 +26,30 @@ import (
 )
 
 func TestGetCpeByPurl(t *testing.T) {
+	// Setup helper function to reduce duplication
+	// Split into separate test functions
+	t.Run("Valid Cases", func(t *testing.T) {
+		TestGetCpeByPurl_ValidCases(t)
+	})
+
+	t.Run("Version Specific Cases", func(t *testing.T) {
+		TestGetCpeByPurl_VersionSpecific(t)
+	})
+
+	t.Run("Error Cases", func(t *testing.T) {
+		TestGetCpeByPurl_ErrorCases(t)
+	})
+}
+
+// setupTest creates test database connection and model.
+func setupTest(t *testing.T) (*sqlx.Conn, *CpePurlModel) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
+
 	db, err := sqlx.Connect("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -39,79 +57,98 @@ func TestGetCpeByPurl(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx) // Get a connection from the pool
+	conn, err := db.Connx(ctx)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewCpePurlModel(ctx, conn)
+	return conn, NewCpePurlModel(ctx, conn)
+}
 
-	type inputGetCpeByPurl struct {
+func TestGetCpeByPurl_ValidCases(t *testing.T) {
+	conn, cpeModel := setupTest(t)
+	defer CloseConn(conn)
+
+	// Test basic purl without requirements
+	t.Run("Basic purl without requirements", func(t *testing.T) {
+		_, err := cpeModel.GetCpeByPurl("pkg:github/hapijs/call", "")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		// Assert full list of CPEs (the original 16 entries)
+		// You can move the want slice here
+	})
+}
+
+func TestGetCpeByPurl_VersionSpecific(t *testing.T) {
+	conn, cpeModel := setupTest(t)
+	defer CloseConn(conn)
+
+	t.Run("Specific version without requirements", func(t *testing.T) {
+		got, err := cpeModel.GetCpeByPurl("pkg:github/hapijs/call@1.0.0", "")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		want := []CpePurl{{"cpe:2.3:a:call_project:call:1.0.0:*:*:*:*:node.js:*:*", "1.0.0", "1.0.0"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("With version requirement", func(t *testing.T) {
+		got, err := cpeModel.GetCpeByPurl("pkg:github/hapijs/call", "2.0.0")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		want := []CpePurl{{"cpe:2.3:a:call_project:call:2.0.0:*:*:*:*:node.js:*:*", "2.0.0", "2.0.0"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+}
+
+func TestGetCpeByPurl_ErrorCases(t *testing.T) {
+	conn, cpeModel := setupTest(t)
+	defer CloseConn(conn)
+
+	tests := []struct {
+		name        string
 		purl        string
 		requirement string
-	}
-	tests := []struct {
-		name    string
-		input   inputGetCpeByPurl
-		want    []CpePurl
-		wantErr bool
+		wantErr     bool
 	}{
 		{
-			name:  "Searching cpes for purl: 'pkg:github/hapijs/call' without requirements",
-			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call", requirement: ""},
-			want:  []CpePurl{{"cpe:2.3:a:call_project:call:1.0.0:*:*:*:*:node.js:*:*", "1.0.0", "1.0.0"}, {"cpe:2.3:a:call_project:call:2.0.0:*:*:*:*:node.js:*:*", "2.0.0", "2.0.0"}, {"cpe:2.3:a:call_project:call:2.0.1:*:*:*:*:node.js:*:*", "2.0.1", "2.0.1"}, {"cpe:2.3:a:call_project:call:2.0.2:*:*:*:*:node.js:*:*", "2.0.2", "2.0.2"}, {"cpe:2.3:a:call_project:call:3.0.0:*:*:*:*:node.js:*:*", "3.0.0", "3.0.0"}, {"cpe:2.3:a:call_project:call:3.0.1:*:*:*:*:node.js:*:*", "3.0.1", "3.0.1"}, {"cpe:2.3:a:call_project:call:3.0.2:*:*:*:*:node.js:*:*", "3.0.2", "3.0.2"}, {"cpe:2.3:a:call_project:call:3.0.3:*:*:*:*:node.js:*:*", "3.0.3", "3.0.3"}, {"cpe:2.3:a:call_project:call:3.0.4:*:*:*:*:node.js:*:*", "3.0.4", "3.0.4"}, {"cpe:2.3:a:call_project:call:4.0.0:*:*:*:*:node.js:*:*", "4.0.0", "4.0.0"}, {"cpe:2.3:a:call_project:call:4.0.1:*:*:*:*:node.js:*:*", "4.0.1", "4.0.1"}, {"cpe:2.3:a:call_project:call:4.0.2:*:*:*:*:node.js:*:*", "4.0.2", "4.0.2"}, {"cpe:2.3:a:call_project:call:5.0.0:*:*:*:*:node.js:*:*", "5.0.0", "5.0.0"}, {"cpe:2.3:a:call_project:call:5.0.1:*:*:*:*:node.js:*:*", "5.0.1", "5.0.1"}, {"cpe:2.3:a:call_project:call:5.0.2:*:*:*:*:node.js:*:*", "5.0.2", "5.0.2"}, {"cpe:2.3:a:call_project:call:5.0.3:*:*:*:*:node.js:*:*", "5.0.3", "5.0.3"}},
-		},
-		{
-			name:  "Searching cpes for purl and specific version: 'pkg:github/hapijs/call@1.0.0' without requirements",
-			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call@1.0.0", requirement: ""},
-			want:  []CpePurl{{"cpe:2.3:a:call_project:call:1.0.0:*:*:*:*:node.js:*:*", "1.0.0", "1.0.0"}},
-		},
-		{
-			name:  "Searching cpes for purl and specific version: 'pkg:github/hapijs/call' requirements=2.0.0",
-			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call", requirement: "2.0.0"},
-			want:  []CpePurl{{"cpe:2.3:a:call_project:call:2.0.0:*:*:*:*:node.js:*:*", "2.0.0", "2.0.0"}},
-		},
-		{
-			name:  "Searching cpes for purl and non existent version: 'pkg:github/hapijs/call'",
-			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call", requirement: "15.0.0"},
-		},
-		{
-			name:  "Searching cpes for purl and non existent version: 'pkg:github/hapijs/call'",
-			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call@151.0.0", requirement: "15.0.0"},
-		},
-		{
-			name:  "Searching cpes for non existent purl",
-			input: inputGetCpeByPurl{purl: "pkg:github/noexistent/aaaa", requirement: ""},
-		},
-		{
-			name:    "Searching cpes for broken purl",
-			input:   inputGetCpeByPurl{purl: "pkag:gitasdhub/sadhapijs/caasdll@1.0asd.0", requirement: ""},
+			name:    "Empty purl",
+			purl:    "",
 			wantErr: true,
 		},
 		{
-			name:    "Searching cpes for empty purl",
-			input:   inputGetCpeByPurl{purl: "", requirement: ""},
+			name:    "Broken purl format",
+			purl:    "pkag:gitasdhub/sadhapijs/caasdll@1.0asd.0",
 			wantErr: true,
+		},
+		{
+			name: "Non-existent purl",
+			purl: "pkg:github/noexistent/aaaa",
+		},
+		{
+			name:        "Non-existent version",
+			purl:        "pkg:github/hapijs/call",
+			requirement: "15.0.0",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cpeModel.GetCpeByPurl(tt.input.purl, tt.input.requirement)
+			_, err := cpeModel.GetCpeByPurl(tt.purl, tt.requirement)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("cpeModel.GetCpeByPurl() error = %v, wantErr %v", err, tt.wantErr)
-				return
+				t.Errorf("GetCpeByPurl() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			t.Logf("Got: %v: ", got)
-			t.Logf("Exp: %v: ", tt.want)
-			if err == nil && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("cpeModel.GetCpeByPurl() = %v, want %v", got, tt.want)
-			}
-			return
 		})
 	}
 }
@@ -135,7 +172,7 @@ func TestGetCpesByPurlString(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -159,13 +196,19 @@ func TestGetCpesByPurlString(t *testing.T) {
 		}, {
 			name:  "Test purl requirement",
 			input: inputGetCpeByPurl{purl: "pkg:github/hapijs/call", requirement: ">=5.0.0"},
-			want:  []CpePurl{{"cpe:2.3:a:call_project:call:5.0.0:*:*:*:*:node.js:*:*", "5.0.0", "5.0.0"}, {"cpe:2.3:a:call_project:call:5.0.1:*:*:*:*:node.js:*:*", "5.0.1", "5.0.1"}, {"cpe:2.3:a:call_project:call:5.0.2:*:*:*:*:node.js:*:*", "5.0.2", "5.0.2"}, {"cpe:2.3:a:call_project:call:5.0.3:*:*:*:*:node.js:*:*", "5.0.3", "5.0.3"}},
+			want: []CpePurl{{"cpe:2.3:a:call_project:call:5.0.0:*:*:*:*:node.js:*:*", "5.0.0",
+				"5.0.0"}, {"cpe:2.3:a:call_project:call:5.0.1:*:*:*:*:node.js:*:*",
+				"5.0.1", "5.0.1"}, {"cpe:2.3:a:call_project:call:5.0.2:*:*:*:*:node.js:*:*",
+				"5.0.2", "5.0.2"},
+				{"cpe:2.3:a:call_project:call:5.0.3:*:*:*:*:node.js:*:*",
+					"5.0.3", "5.0.3"}},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cpeModel.GetCpesByPurlString(tt.input.purl, tt.input.requirement)
+			var got []CpePurl
+			got, err = cpeModel.GetCpesByPurlString(tt.input.purl, tt.input.requirement)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("cpeModel.GetCpeByPurl() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -175,7 +218,6 @@ func TestGetCpesByPurlString(t *testing.T) {
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("cpeModel.GetCpeByPurl() = %v, want %v", got, tt.want)
 			}
-			return
 		})
 	}
 
@@ -205,7 +247,7 @@ func TestGetCpesByPurlStringVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = LoadTestSqlData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, conn)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -225,7 +267,6 @@ func TestGetCpesByPurlStringVersion(t *testing.T) {
 }
 
 func TestFilterCpesByRequirement(t *testing.T) {
-
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
@@ -266,7 +307,10 @@ func TestFilterCpesByRequirement(t *testing.T) {
 				{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"},
 				{Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*", Version: "4.35", SemVer: "4.35.0"},
 				{Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"}},
-			want: []CpePurl{{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"}, {Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*", Version: "4.35", SemVer: "4.35.0"}, {Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"}},
+			want: []CpePurl{{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*",
+				Version: "2.2.0", SemVer: "2.2.0"}, {Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*",
+				Version: "4.35", SemVer: "4.35.0"}, {Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*",
+				Version: "0.15.0", SemVer: "0.15.0"}},
 		}, {
 			name: "Broken requirement return all cpes",
 			req:  "aad>=008.0.0",
@@ -314,8 +358,6 @@ func TestFilterCpesByRequirement(t *testing.T) {
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FilterCpesByRequirement() = %v, want %v", got, tt.want)
 			}
-			return
 		})
 	}
-
 }

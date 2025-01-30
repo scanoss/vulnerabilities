@@ -21,6 +21,10 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
 	_ "github.com/lib/pq"
@@ -29,14 +33,12 @@ import (
 	gs "github.com/scanoss/go-grpc-helper/pkg/grpc/server"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"go.uber.org/zap/zapcore"
-	"net/http"
-	"os"
+
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	zlog_old "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/protocol/grpc"
 	"scanoss.com/vulnerabilities/pkg/protocol/rest"
 	"scanoss.com/vulnerabilities/pkg/service"
-	"strings"
 )
 
 //go:generate bash ../../get_version.sh
@@ -71,6 +73,9 @@ func getConfig() (*myconfig.ServerConfig, error) {
 	}
 
 	myConfig, err := myconfig.NewServerConfig(feeders)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check for minimum configuration required
 	err = myconfig.IsValidConfig(myConfig)
@@ -78,7 +83,7 @@ func getConfig() (*myconfig.ServerConfig, error) {
 	return myConfig, err
 }
 
-// RunServer runs the gRPC Vulnerabilities Server
+// RunServer runs the gRPC Vulnerabilities Server.
 func RunServer() error {
 	// Load command line options and config
 	cfg, err := getConfig()
@@ -89,7 +94,6 @@ func RunServer() error {
 	//TODO: Remove when replacing zlog
 	switch strings.ToLower(cfg.App.Mode) {
 	case "prod":
-		var err error
 		if cfg.App.Debug {
 			err = zlog_old.NewSugaredProdLoggerLevel(zapcore.DebugLevel)
 		} else {
@@ -100,7 +104,7 @@ func RunServer() error {
 		}
 		zlog_old.L.Debug("Running with debug enabled")
 	default:
-		if err := zlog_old.NewSugaredDevLogger(); err != nil {
+		if err = zlog_old.NewSugaredDevLogger(); err != nil {
 			return fmt.Errorf("failed to load logger: %v", err)
 		}
 	}

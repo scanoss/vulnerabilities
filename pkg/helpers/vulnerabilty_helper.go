@@ -20,12 +20,12 @@ import (
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
-// Create a helper function to convert vulnerability to output DTO
+// Create a helper function to convert vulnerability to output DTO.
 func toVulnerabilityOutput(vul dtos.VulnerabilitiesOutput) dtos.VulnerabilitiesOutput {
 	return dtos.VulnerabilitiesOutput{
-		Id:        vul.Id,
+		ID:        vul.ID,
 		Cve:       vul.Cve,
-		Url:       vul.Url,
+		URL:       vul.URL,
 		Summary:   vul.Summary,
 		Severity:  vul.Severity,
 		Published: vul.Published,
@@ -66,10 +66,10 @@ func processVulnerabilities(uniqueVulnerabilities map[string]bool,
 	}
 }
 
-func MergeOSVAndLocalVulnerabilities(localVulnerabilities dtos.VulnerabilityOutput, OSVVulnerabilities dtos.VulnerabilityOutput) dtos.VulnerabilityOutput {
+func MergeOSVAndLocalVulnerabilities(localVulnerabilities dtos.VulnerabilityOutput, osvVulnerabilities dtos.VulnerabilityOutput) dtos.VulnerabilityOutput {
 	uniqueVulnerabilities := make(map[string]bool)
 	vulnerabilities := map[string][]dtos.VulnerabilitiesOutput{}
-	processVulnerabilities(uniqueVulnerabilities, vulnerabilities, OSVVulnerabilities)
+	processVulnerabilities(uniqueVulnerabilities, vulnerabilities, osvVulnerabilities)
 	processVulnerabilities(uniqueVulnerabilities, vulnerabilities, localVulnerabilities)
 	return convertToVulnerabilityOutput(vulnerabilities)
 }
