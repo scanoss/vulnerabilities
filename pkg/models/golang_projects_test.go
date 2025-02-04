@@ -24,9 +24,9 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	pkggodevclient "github.com/guseggert/pkggodev-client"
 	"github.com/jmoiron/sqlx"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"scanoss.com/vulnerabilities/pkg/config"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 const ScanossPapiURL = "github.com/scanoss/papi"

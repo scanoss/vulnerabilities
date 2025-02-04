@@ -23,7 +23,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
 

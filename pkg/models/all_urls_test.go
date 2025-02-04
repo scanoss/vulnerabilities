@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"testing"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/jmoiron/sqlx"
-
 	"scanoss.com/vulnerabilities/pkg/config"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 func TestAllUrlsSearch(t *testing.T) {

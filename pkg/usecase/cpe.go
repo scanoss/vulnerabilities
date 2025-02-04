@@ -24,8 +24,9 @@ import (
 
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/models"
+
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 type CpeUseCase struct {

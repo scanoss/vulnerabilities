@@ -25,7 +25,8 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
+
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 type VersionModel struct {

@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
