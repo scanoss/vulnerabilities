@@ -135,9 +135,6 @@ func TestLicensesSearchId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	if err != nil {
-		t.Fatalf("failed to load SQL test data: %v", err)
-	}
 	licenseModel := NewLicenseModel(ctx, zlog.S, conn)
 
 	name := "MIT"

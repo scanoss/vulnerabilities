@@ -14,7 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Package logger handles logging for everything in the vulneravility system
+// Package logger handles logging for everything in the vulnerability system
 // It uses zap to achieve this
 package logger
 

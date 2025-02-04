@@ -43,7 +43,7 @@ func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
 	return &CpePurlModel{ctx: ctx, conn: conn}
 }
 
-// If version is specified in purl string the requirement is ignored.
+// GetCpeByPurl If version is specified in purl string the requirement is ignored.
 func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
@@ -71,7 +71,7 @@ func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, erro
 	return m.GetCpesByPurlString(purlString, purlReq)
 }
 
-// GetCpesByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement).
+// GetCpesByPurlString searches for component details of the specified Purl Name/Type (and optional requirement).
 func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([]CpePurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")

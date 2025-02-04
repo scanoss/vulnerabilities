@@ -30,7 +30,7 @@ import (
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
-func TestGetVulneraibilityUseCase(t *testing.T) {
+func TestGetVulnerabilityUseCase(t *testing.T) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
