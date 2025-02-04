@@ -73,12 +73,12 @@ type ServerConfig struct {
 	}
 	Source struct {
 		OSV struct {
-			APIBaseURL  string `env:"OSV_API_BASE_URL"`
-			InfoBaseURL string `env:"OSV_INFO_BASE_URL"`
-			Enabled     bool   `env:"OSV_SOURCE_ENABLED"`
+			APIBaseURL  string `env:"VULN_OSV_API_BASE_URL"`
+			InfoBaseURL string `env:"VULN_OSV_INFO_BASE_URL"`
+			Enabled     bool   `env:"VULN_OSV_SOURCE_ENABLED"`
 		}
 		SCANOSS struct {
-			Enabled bool `env:"SCANOSS_SOURCE_ENABLED"`
+			Enabled bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
 		}
 	}
 }
