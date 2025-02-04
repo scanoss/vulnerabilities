@@ -440,9 +440,6 @@ func TestGolangProjectsSearchBadSql(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	if err != nil {
-		t.Fatalf("failed to load SQL test data: %v", err)
-	}
 	s := ctxzap.Extract(ctx).Sugar()
 	myConfig, err := config.NewServerConfig(nil)
 	if err != nil {

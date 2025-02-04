@@ -46,12 +46,12 @@ type OnlyPurl struct {
 	Purl string `db:"purl"`
 }
 
-// NewCpePurlModel creates a new instance of the CPE Purl Model.
+// NewVulnsForPurlModel creates a new instance of the CPE Purl Model.
 func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlModel {
 	return &VulnsForPurlModel{ctx: ctx, conn: conn}
 }
 
-// GetVulnsByPurl.
+// GetVulnsByPurl gets vulnerabilities by purl.
 func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsForPurl, error) {
 	if len(purlString) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
@@ -78,7 +78,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsF
 	return m.GetVulnsByPurlName(purlName)
 }
 
-// GetUrlsByPurlNameType searches for component details of the specified Purl Name/Type (and optional requirement).
+// GetVulnsByPurlName searches for component details of the specified Purl Name/Type (and optional requirement).
 func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")

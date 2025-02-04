@@ -33,7 +33,7 @@ func (ct *OnlyDate) String() string {
 }
 
 func ParseTime(t string) time.Time {
-	timeValue, err := time.Parse(time.DateOnly, "2023-04-28")
+	timeValue, err := time.Parse(time.DateOnly, t)
 	if err != nil {
 		panic(err)
 	}

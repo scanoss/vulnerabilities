@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// Package models SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (C) 2018-2025 SCANOSS.COM
  *
@@ -175,7 +175,6 @@ func pickOneURL(s *zap.SugaredLogger, projModel *ProjectModel, allUrls []AllURL,
 		s.Infof("No component match (in urls) found for %v, %v", purlName, purlType)
 		return AllURL{}, nil
 	}
-	// s.Debugf("Potential Matches: %v", allUrls)
 	var c *semver.Constraints
 	var urlMap = make(map[*semver.Version]AllURL)
 	if len(purlReq) > 0 {
