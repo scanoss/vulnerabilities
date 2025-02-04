@@ -19,9 +19,10 @@ package models
 import (
 	"testing"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 func TestDbLoad(t *testing.T) {

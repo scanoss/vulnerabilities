@@ -22,8 +22,9 @@ import (
 	"regexp"
 	"strings"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+
 	"github.com/package-url/packageurl-go"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 )
 
 var pkgRegex = regexp.MustCompile(`^pkg:(?P<type>\w+)/(?P<name>.+)$`) // regex to parse purl name from purl string

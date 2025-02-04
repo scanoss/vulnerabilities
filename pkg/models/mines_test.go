@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"testing"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+
 	"github.com/jmoiron/sqlx"
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
 
 	_ "github.com/mattn/go-sqlite3"
 )

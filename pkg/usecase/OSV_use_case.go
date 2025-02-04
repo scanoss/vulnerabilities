@@ -29,7 +29,7 @@ import (
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/utils"
 
-	zlog "scanoss.com/vulnerabilities/pkg/logger"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 type OSVPackageRequest struct {
