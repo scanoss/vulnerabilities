@@ -1,6 +1,6 @@
 DROP TABLE IF EXISTS t_short_cpe_purl_exported;
 
-CREATE TABLE t_short_cpe_purl_exported
+CREATE TABLE "t_short_cpe_purl_exported"
 (
     cpe_id    integer NOT NULL,
     purl_id   integer NOT NULL,
