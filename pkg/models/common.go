@@ -47,14 +47,15 @@ func loadSQLData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn, filename str
 
 // LoadTestSQLData loads all the required test SQL files.
 func LoadTestSQLData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn) error {
-	files := []string{"../models/tests/cpe.sql",
+	files := []string{
+		"../models/tests/cpe.sql",
 		"../models/tests/cpe_cve.sql",
 		"../models/tests/cve.sql",
 		"../models/tests/purl.sql",
+		"../models/tests/short_cpe_purl.sql",
 		"../models/tests/short_cpe.sql",
 		"../models/tests/versions.sql",
 		"../models/tests/ndv_match_criteria_ids.sql",
-		"../models/tests/short_cpe_purl.sql",
 		"../models/tests/all_urls.sql",
 		"../models/tests/mines.sql",
 		"../models/tests/licenses.sql",
