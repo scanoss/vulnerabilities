@@ -137,3 +137,8 @@ func ConvertGoPurlStringToGithub(purlString string) string {
 	}
 	return purlString
 }
+
+func StripVersionFromPurl(input string) string {
+	purl := strings.Split(input, "@")
+	return purl[0]
+}
