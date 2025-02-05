@@ -18,6 +18,7 @@ require (
 	github.com/scanoss/zap-logging-helper v0.3.2
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.70.0
+	modernc.org/sqlite v1.34.5
 )
 
 require (
