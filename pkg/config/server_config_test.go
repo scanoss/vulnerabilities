@@ -80,3 +80,57 @@ func TestServerConfigJson(t *testing.T) {
 	}
 	fmt.Printf("Server Config3: %+v\n", cfg)
 }
+
+func TestConfigValidation(t *testing.T) {
+	t.Run("configuration validation scenarios", func(t *testing.T) {
+		// Setup
+		feeders := []config.Feeder{feeder.Json{Path: "tests/env.json"}}
+		cfg, err := NewServerConfig(feeders)
+		if err != nil {
+			t.Fatalf("failed to create config instance: %v", err)
+		}
+
+		tests := []struct {
+			name        string
+			modifyConf  func(*ServerConfig)
+			expectError bool
+		}{
+			{
+				name: "invalid when all sources disabled",
+				modifyConf: func(c *ServerConfig) {
+					c.Source.OSV.Enabled = false
+					c.Source.SCANOSS.Enabled = false
+				},
+				expectError: true,
+			},
+			{
+				name: "invalid with empty OSV API base URL",
+				modifyConf: func(c *ServerConfig) {
+					c.Source.OSV.APIBaseURL = ""
+				},
+				expectError: true,
+			},
+			{
+				name: "valid config",
+				modifyConf: func(c *ServerConfig) {
+				},
+				expectError: false,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				testCfg := *cfg
+				tt.modifyConf(&testCfg)
+				err = IsValidConfig(&testCfg)
+
+				if tt.expectError && err == nil {
+					t.Errorf("expected validation error, got nil")
+				}
+				if !tt.expectError && err != nil {
+					t.Errorf("unexpected validation error: %v", err)
+				}
+			})
+		}
+	})
+}
