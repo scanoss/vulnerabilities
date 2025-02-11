@@ -13,7 +13,7 @@
   },
   "Source": {
     "OSV": {
-      "VulnerabilityInfoBaseUrl": "https://test.osv.dev/vulnerability",
+      "VulnerabilityInfoBaseUrl": "https://osv.dev/vulnerability",
       "APIBaseUrl": "https://api.osv.dev/v1",
       "Enabled": true
     },
