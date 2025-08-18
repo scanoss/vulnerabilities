@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/scanoss/go-models/pkg/types"
 	"io"
 	_ "log"
 	"net/http"
@@ -60,7 +61,7 @@ func NewOSVUseCase(osvAPIBaseURL string, osvInfoBaseURL string) *OSVUseCase {
 	}
 }
 
-func (us OSVUseCase) getOSVRequestsFromDTO(dto []dtos.Component) []OSVRequest {
+func (us OSVUseCase) getOSVRequestsFromDTO(dto []types.ComponentRequest) []OSVRequest {
 	var osvRequests []OSVRequest
 	for _, element := range dto {
 		if element.Requirement != "" {
@@ -75,7 +76,7 @@ func (us OSVUseCase) getOSVRequestsFromDTO(dto []dtos.Component) []OSVRequest {
 	return osvRequests
 }
 
-func (us OSVUseCase) Execute(dto []dtos.Component) dtos.VulnerabilityOutput {
+func (us OSVUseCase) Execute(dto []types.ComponentRequest) dtos.VulnerabilityOutput {
 	osvRequests := us.getOSVRequestsFromDTO(dto)
 	return us.processRequests(osvRequests)
 }
