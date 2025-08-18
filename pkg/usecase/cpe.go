@@ -40,25 +40,26 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig)
 	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn)}
 }
 
-func (d CpeUseCase) GetCpes(request dtos.VulnerabilityRequestDTO) (dtos.CpeOutput, error) {
-	var out []dtos.CpePurlOutput
+func (d CpeUseCase) GetCpes(components []dtos.Component) ([]dtos.CpeComponentOutput, error) {
+	var out []dtos.CpeComponentOutput
 	var problems = false
-	for _, purl := range request.Purls {
-		if len(purl.Purl) == 0 {
-			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
+	for _, c := range components {
+		if len(c.Purl) == 0 {
+			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", c)
 			continue
 		}
 		// VulnerabilitiesOutput
-		var item dtos.CpePurlOutput
-		item.Purl = purl.Purl
-		// lamo a la query
-		cpePurl, err := d.cpePurl.GetCpeByPurl(purl.Purl, purl.Requirement)
+		var item dtos.CpeComponentOutput
+		item.Requirement = c.Requirement
+		item.Purl = c.Purl
+		cpePurl, err := d.cpePurl.GetCpeByPurl(c.Purl, c.Requirement)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
+			item.Version = cpePurl[i].Version
 		}
 		zlog.S.Debugf("Output Vulnerabilities: %v", cpePurl)
 		if err != nil {
-			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
+			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			problems = true
 			continue
 			// TODO add a placeholder in the response?
@@ -67,9 +68,9 @@ func (d CpeUseCase) GetCpes(request dtos.VulnerabilityRequestDTO) (dtos.CpeOutpu
 	}
 
 	if problems {
-		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", request)
-		return dtos.CpeOutput{}, errors.New("encountered issues while processing vulnerabilities")
+		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", components)
+		return []dtos.CpeComponentOutput{}, errors.New("encountered issues while processing vulnerabilities")
 	}
 
-	return dtos.CpeOutput{Purls: out}, nil
+	return out, nil
 }

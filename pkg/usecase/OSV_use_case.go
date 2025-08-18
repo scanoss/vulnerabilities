@@ -60,9 +60,9 @@ func NewOSVUseCase(osvAPIBaseURL string, osvInfoBaseURL string) *OSVUseCase {
 	}
 }
 
-func (us OSVUseCase) getOSVRequestsFromDTO(dto dtos.VulnerabilityRequestDTO) []OSVRequest {
+func (us OSVUseCase) getOSVRequestsFromDTO(dto []dtos.Component) []OSVRequest {
 	var osvRequests []OSVRequest
-	for _, element := range dto.Purls {
+	for _, element := range dto {
 		if element.Requirement != "" {
 			osvRequest := OSVRequest{
 				Package: OSVPackageRequest{
@@ -75,7 +75,7 @@ func (us OSVUseCase) getOSVRequestsFromDTO(dto dtos.VulnerabilityRequestDTO) []O
 	return osvRequests
 }
 
-func (us OSVUseCase) Execute(dto dtos.VulnerabilityRequestDTO) dtos.VulnerabilityOutput {
+func (us OSVUseCase) Execute(dto []dtos.Component) dtos.VulnerabilityOutput {
 	osvRequests := us.getOSVRequestsFromDTO(dto)
 	return us.processRequests(osvRequests)
 }
