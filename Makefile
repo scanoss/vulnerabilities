@@ -52,6 +52,10 @@ ghcr_push:  ## Push the GH container image to GH Packages
 
 ghcr_all: ghcr_build ghcr_tag ghcr_push  ## Execute all GitHub Package container actions
 
+run_local:  ## Launch the API locally for test
+	@echo "Launching API locally..."
+	go run cmd/server/main.go -json-config config/app-config-dev.json -debug
+
 build_amd: version  ## Build an AMD 64 binary
 	@echo "Building AMD binary $(VERSION)..."
 	go generate ./pkg/cmd/server.go

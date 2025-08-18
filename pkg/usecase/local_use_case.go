@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"scanoss.com/vulnerabilities/pkg/utils"
 
 	"github.com/jmoiron/sqlx"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
@@ -43,24 +44,26 @@ func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config
 		versionMod: models.NewVersionModel(ctx, conn)}
 }
 
-func (d LocalVulnerabilityUseCase) GetVulnerabilities(request dtos.VulnerabilityRequestDTO) (dtos.VulnerabilityOutput, error) {
+func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.Component) (dtos.VulnerabilityOutput, error) {
 	var vulnOutputs []dtos.VulnerabilityPurlOutput
 
 	var problems = false
-	for _, purl := range request.Purls {
-		if len(purl.Purl) == 0 {
-			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", purl)
+	for _, c := range request {
+		if len(c.Purl) == 0 {
+			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", c)
 			continue
 		}
 
 		// VulnerabilitiesOutput
 		var item dtos.VulnerabilityPurlOutput
 
-		item.Purl = purl.Purl + "@" + purl.Requirement
-		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(purl.Purl, purl.Requirement)
+		requirement := utils.StripSemverOperator(c.Requirement)
+
+		item.Purl = c.Purl + "@" + requirement
+		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(c.Purl, requirement)
 
 		if err != nil {
-			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", purl, err)
+			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			problems = true
 			continue
 			// TODO add a placeholder in the response?
