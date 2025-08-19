@@ -25,19 +25,17 @@ import (
 func TestOSVUseCase(t *testing.T) {
 	testCases := []struct {
 		name  string
-		input dtos.VulnerabilityRequestDTO
+		input []dtos.ComponentDTO
 	}{
 		{
 			name: "OSV Use Case Test",
-			input: dtos.VulnerabilityRequestDTO{
-				Purls: []dtos.VulnPurlInput{
-					{
-						Purl:        "pkg:pypi/mlflow",
-						Requirement: "2.3.0",
-					},
-					{
-						Purl: "pkg:golang/github.com/navidrome/navidrome",
-					},
+			input: []dtos.ComponentDTO{
+				{
+					Purl:        "pkg:pypi/mlflow",
+					Requirement: "2.3.0",
+				},
+				{
+					Purl: "pkg:golang/github.com/navidrome/navidrome",
 				},
 			},
 		},

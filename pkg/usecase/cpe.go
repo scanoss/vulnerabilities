@@ -19,11 +19,9 @@ package usecase
 import (
 	"context"
 	"errors"
+	"github.com/jmoiron/sqlx"
 	"github.com/scanoss/go-models/pkg/scanoss"
 	"github.com/scanoss/go-models/pkg/types"
-
-	"github.com/jmoiron/sqlx"
-
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
@@ -43,7 +41,7 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig,
 	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn), db: db}
 }
 
-func (d CpeUseCase) GetCpes(components []types.ComponentRequest) ([]dtos.CpeComponentOutput, error) {
+func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
 
 	sc := scanoss.New(d.db)
 	var out []dtos.CpeComponentOutput
@@ -58,7 +56,7 @@ func (d CpeUseCase) GetCpes(components []types.ComponentRequest) ([]dtos.CpeComp
 		item.Requirement = c.Requirement
 		item.Purl = c.Purl
 
-		component, err := sc.Component.GetComponent(d.ctx, c)
+		component, err := sc.Component.GetComponent(d.ctx, types.ComponentRequest{Purl: c.Purl, Requirement: c.Requirement})
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			problems = true

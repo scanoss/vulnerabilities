@@ -319,3 +319,4 @@ INSERT INTO "versions" ("id", "version_name", "semver") VALUES (11435747, '0.0.1
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (19836180,'0.10.52-4','0.10.52+4');
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (11640350, '1.7.0', 'v1.7.0');
 INSERT INTO "versions" ("id", "version_name", "semver") VALUES (5193086, '1.19.0', '');
+INSERT INTO "versions" ("id", "version_name", "semver") VALUES (30001, '15.0.0', '15.0.0');

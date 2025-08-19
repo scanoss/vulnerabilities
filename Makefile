@@ -28,6 +28,11 @@ unit_test: version ## Run all unit tests in the pkg folder
 	@echo "Running unit test framework..."
 	go test -v ./pkg/...
 
+unit_test_cover: version ## Run all unit tests in the pkg folder
+	@echo "Running unit test framework with coverage..."
+	go test -cover ./...
+
+
 lint_local: ## Run local instance of linting across the code base
 	golangci-lint run ./...
 
