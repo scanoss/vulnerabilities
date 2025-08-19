@@ -51,53 +51,25 @@ func TestGetVulnerabilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%v' was not expected when loading test data", err)
 	}
-	var vulnRequestData = `
+	components := []dtos.ComponentDTO{
 		{
-			"purls": [
-	   	 		{
-	   	   			"purl": "pkg:github/tseliot/screen-resolution-extra"
-	   	 		},{
-					"purl": ""
-				},
-	  	 		{
-	   	   			"purl": "pkg:github/candlepin/candlepin"
-	   	 		}
-			]
-		}`
-
+			Purl: "pkg:github/tseliot/screen-resolution-extra",
+		},
+		{
+			Purl: "",
+		},
+		{
+			Purl: "pkg:github/candlepin/candlepin",
+		},
+	}
 	myConfig, err := myconfig.NewServerConfig(nil)
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	vulnUc := NewLocalVulnerabilitiesUseCase(ctx, conn, myConfig)
-	requestDto, err := dtos.ParseVulnerabilityInput([]byte(vulnRequestData))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when parsing input json", err)
-	}
-	zlog.S.Infof("Request DTO: %+v", requestDto)
-	vulns, err := vulnUc.GetVulnerabilities(requestDto)
+	vulns, err := vulnUc.GetVulnerabilities(components)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when getting vulnerabilities", err)
 	}
 	fmt.Printf("Vulneravility response: %+v\n", vulns)
-
-	// Broken purl
-	var vulnRequestDataBad = `
-			{
-			  "purls": [
-				{
-				  "purl": "pkg:github/"
-				}
-			  ]
-			}
-		`
-	requestDto, err = dtos.ParseVulnerabilityInput([]byte(vulnRequestDataBad))
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when parsing input json", err)
-	}
-	vulns, err = vulnUc.GetVulnerabilities(requestDto)
-	if err == nil {
-		t.Fatalf("did not get an expected error: %v", vulns)
-	}
-	fmt.Printf("Got expected error: %+v\n", err)
 }

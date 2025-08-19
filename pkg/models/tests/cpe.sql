@@ -374,6 +374,7 @@ INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (158730, '
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (158753, 'cpe:2.3:a:calderalabs:caldera_forms:1.4.9:*:*:*:*:wordpress:*:*', 40143, 19467646);
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (159564, 'cpe:2.3:a:call_project:call:5.0.3:*:*:*:*:node.js:*:*', 50021, 1993);
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (160288, 'cpe:2.3:a:canonical:screen-resolution-extra:0.17.2:*:*:*:*:*:*:*', 20819, 19295009);
+INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (170001, 'cpe:2.3:a:canonical:screen-resolution-extra:15.0.0:*:*:*:*:*:*:*', 20819, 30001);
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (158700, 'cpe:2.3:a:calderalabs:caldera_forms:1.0.9:*:*:*:*:wordpress:*:*', 40143, 263333);
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (158715, 'cpe:2.3:a:calderalabs:caldera_forms:1.1.9.4:*:*:*:*:wordpress:*:*', 40143, 10206536);
 INSERT INTO "cpes" ("id", "cpe", "short_cpe_id", "version_id") VALUES (160853, 'cpe:2.3:a:cantemo:portal:3.1.7:*:*:*:*:*:*:*', 6591, 19468627);

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/scanoss/go-models/pkg/types"
 	"scanoss.com/vulnerabilities/pkg/utils"
 
 	"github.com/jmoiron/sqlx"
@@ -45,7 +44,7 @@ func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config
 		versionMod: models.NewVersionModel(ctx, conn)}
 }
 
-func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []types.ComponentRequest) (dtos.VulnerabilityOutput, error) {
+func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDTO) (dtos.VulnerabilityOutput, error) {
 	var vulnOutputs []dtos.VulnerabilityPurlOutput
 
 	var problems = false
