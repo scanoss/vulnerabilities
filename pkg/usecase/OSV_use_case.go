@@ -83,7 +83,7 @@ func (us OSVUseCase) Execute(dto []dtos.ComponentDTO) dtos.VulnerabilityOutput {
 func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOutput {
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
-	results := make(chan dtos.VulnerabilityPurlOutput, len(requests))
+	results := make(chan dtos.VulnerabilityComponentOutput, len(requests))
 	defer cancel()
 	for _, request := range requests {
 		wg.Add(1)
@@ -107,26 +107,26 @@ func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOu
 
 	// Collect all results into a slice
 	var response = dtos.VulnerabilityOutput{
-		Purls: []dtos.VulnerabilityPurlOutput{},
+		Components: []dtos.VulnerabilityComponentOutput{},
 	}
 	for result := range results {
-		response.Purls = append(response.Purls, result)
+		response.Components = append(response.Components, result)
 	}
 
 	return response
 }
 
-func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPurlOutput, error) {
+func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityComponentOutput, error) {
 	out, err := json.Marshal(osvRequest)
 	if err != nil {
 		zlog.S.Errorf("Failed to marshal request: %s", err)
-		return dtos.VulnerabilityPurlOutput{}, err
+		return dtos.VulnerabilityComponentOutput{}, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
 	if err != nil {
 		zlog.S.Errorf("Failed to create HTTP request: %s", err)
-		return dtos.VulnerabilityPurlOutput{}, err
+		return dtos.VulnerabilityComponentOutput{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -134,7 +134,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	resp, err := us.client.Do(req)
 	if err != nil {
 		zlog.S.Errorf("HTTP request failed: %s", err)
-		return dtos.VulnerabilityPurlOutput{}, err
+		return dtos.VulnerabilityComponentOutput{}, err
 	}
 
 	defer func(Body io.ReadCloser) {
@@ -147,7 +147,7 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	// Check for non-200 HTTP responses
 	if resp.StatusCode != http.StatusOK {
 		zlog.S.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
-		return dtos.VulnerabilityPurlOutput{}, err
+		return dtos.VulnerabilityComponentOutput{}, err
 	}
 
 	var OSVResponse dtos.OSVResponseDTO
@@ -155,10 +155,10 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityPu
 	if err != nil {
 		// Handle error
 		zlog.S.Errorf("Failed to decode response: %s", err)
-		return dtos.VulnerabilityPurlOutput{}, err
+		return dtos.VulnerabilityComponentOutput{}, err
 	}
 
-	response := dtos.VulnerabilityPurlOutput{
+	response := dtos.VulnerabilityComponentOutput{
 		Purl:            osvRequest.Package.Purl,
 		Vulnerabilities: us.mapOSVVulnerabilities(OSVResponse.Vulns),
 	}

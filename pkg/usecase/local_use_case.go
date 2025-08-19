@@ -20,8 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"scanoss.com/vulnerabilities/pkg/utils"
-
 	"github.com/jmoiron/sqlx"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
@@ -41,12 +39,12 @@ type LocalVulnerabilityUseCase struct {
 func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig) *LocalVulnerabilityUseCase {
 	return &LocalVulnerabilityUseCase{ctx: ctx, conn: conn,
 		vulnsPurl:  models.NewVulnsForPurlModel(ctx, conn),
-		versionMod: models.NewVersionModel(ctx, conn)}
+		versionMod: models.NewVersionModel(ctx, conn),
+	}
 }
 
 func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDTO) (dtos.VulnerabilityOutput, error) {
-	var vulnOutputs []dtos.VulnerabilityPurlOutput
-
+	var vulnOutputs []dtos.VulnerabilityComponentOutput
 	var problems = false
 	for _, c := range request {
 		if len(c.Purl) == 0 {
@@ -55,18 +53,17 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDT
 		}
 
 		// VulnerabilitiesOutput
-		var item dtos.VulnerabilityPurlOutput
+		var item dtos.VulnerabilityComponentOutput
+		item.Purl = c.Purl
+		item.Requirement = c.Requirement
+		item.Version = c.Version
 
-		requirement := utils.StripSemverOperator(c.Requirement)
-
-		item.Purl = c.Purl + "@" + requirement
-		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(c.Purl, requirement)
+		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(c.Purl, c.Version)
 
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			problems = true
 			continue
-			// TODO add a placeholder in the response?
 		}
 
 		for _, cve := range vulnPurls {
@@ -91,5 +88,5 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDT
 		return dtos.VulnerabilityOutput{}, errors.New("encountered issues while processing vulnerabilities")
 	}
 
-	return dtos.VulnerabilityOutput{Purls: vulnOutputs}, nil
+	return dtos.VulnerabilityOutput{Components: vulnOutputs}, nil
 }

@@ -37,21 +37,21 @@ func toVulnerabilityOutput(vul dtos.VulnerabilitiesOutput) dtos.VulnerabilitiesO
 func convertToVulnerabilityOutput(vulnerabilitiesMap map[string][]dtos.VulnerabilitiesOutput) dtos.VulnerabilityOutput {
 	var output dtos.VulnerabilityOutput
 	// Pre-allocate slice with capacity
-	output.Purls = make([]dtos.VulnerabilityPurlOutput, 0, len(vulnerabilitiesMap))
+	output.Components = make([]dtos.VulnerabilityComponentOutput, 0, len(vulnerabilitiesMap))
 	// Convert map entries to VulnerabilityPurlOutput structs
 	for purl, vulnerabilities := range vulnerabilitiesMap {
-		purlOutput := dtos.VulnerabilityPurlOutput{
+		purlOutput := dtos.VulnerabilityComponentOutput{
 			Purl:            purl,
 			Vulnerabilities: vulnerabilities,
 		}
-		output.Purls = append(output.Purls, purlOutput)
+		output.Components = append(output.Components, purlOutput)
 	}
 	return output
 }
 
 func processVulnerabilities(uniqueVulnerabilities map[string]bool,
 	vulnerabilities map[string][]dtos.VulnerabilitiesOutput, input dtos.VulnerabilityOutput) {
-	for _, osv := range input.Purls {
+	for _, osv := range input.Components {
 		if _, exists := vulnerabilities[osv.Purl]; exists {
 			for _, vul := range osv.Vulnerabilities {
 				if !uniqueVulnerabilities[osv.Purl+vul.Cve] {
