@@ -20,56 +20,55 @@ import (
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
-// Create a helper function to convert vulnerability to output DTO.
-func toVulnerabilityOutput(vul dtos.VulnerabilitiesOutput) dtos.VulnerabilitiesOutput {
-	return dtos.VulnerabilitiesOutput{
-		ID:        vul.ID,
-		Cve:       vul.Cve,
-		URL:       vul.URL,
-		Summary:   vul.Summary,
-		Severity:  vul.Severity,
-		Published: vul.Published,
-		Modified:  vul.Modified,
-		Source:    vul.Source,
-	}
-}
-
-func convertToVulnerabilityOutput(vulnerabilitiesMap map[string][]dtos.VulnerabilitiesOutput) dtos.VulnerabilityOutput {
+func convertToVulnerabilityOutput(componentVulnerabilityMap map[string]dtos.VulnerabilityComponentOutput) dtos.VulnerabilityOutput {
 	var output dtos.VulnerabilityOutput
 	// Pre-allocate slice with capacity
-	output.Components = make([]dtos.VulnerabilityComponentOutput, 0, len(vulnerabilitiesMap))
+	output.Components = make([]dtos.VulnerabilityComponentOutput, 0, len(componentVulnerabilityMap))
 	// Convert map entries to VulnerabilityPurlOutput structs
-	for purl, vulnerabilities := range vulnerabilitiesMap {
+	for _, vulnerabilityComponent := range componentVulnerabilityMap {
 		purlOutput := dtos.VulnerabilityComponentOutput{
-			Purl:            purl,
-			Vulnerabilities: vulnerabilities,
+			Purl:            vulnerabilityComponent.Purl,
+			Requirement:     vulnerabilityComponent.Requirement,
+			Version:         vulnerabilityComponent.Version,
+			Vulnerabilities: vulnerabilityComponent.Vulnerabilities,
 		}
 		output.Components = append(output.Components, purlOutput)
 	}
 	return output
 }
 
-func processVulnerabilities(uniqueVulnerabilities map[string]bool,
-	vulnerabilities map[string][]dtos.VulnerabilitiesOutput, input dtos.VulnerabilityOutput) {
-	for _, osv := range input.Components {
-		if _, exists := vulnerabilities[osv.Purl]; exists {
-			for _, vul := range osv.Vulnerabilities {
-				if !uniqueVulnerabilities[osv.Purl+vul.Cve] {
-					vulnerability := toVulnerabilityOutput(vul)
-					uniqueVulnerabilities[osv.Purl+vul.Cve] = true
-					vulnerabilities[osv.Purl] = append(vulnerabilities[osv.Purl], vulnerability)
-				}
-			}
-			continue
+func aggregateVulnerabilities(componentVulnerabilityMap map[string]dtos.VulnerabilityComponentOutput,
+	vulnerabilities dtos.VulnerabilityOutput) {
+	// Process local vulnerabilities
+	for _, c := range vulnerabilities.Components {
+		key := c.Purl + "@" + c.Version + "@" + c.Requirement
+		if component, ok := componentVulnerabilityMap[key]; ok {
+			component.Vulnerabilities = append(component.Vulnerabilities, c.Vulnerabilities...)
+			componentVulnerabilityMap[key] = component
+		} else {
+			componentVulnerabilityMap[key] = c
 		}
-		vulnerabilities[osv.Purl] = osv.Vulnerabilities
+	}
+}
+
+func removeDuplicatedVulnerabilities(vulnerabilityComponentMap map[string]dtos.VulnerabilityComponentOutput) {
+	for _, vulnerabilityComponent := range vulnerabilityComponentMap {
+		vulnerabilityMap := make(map[string]dtos.VulnerabilitiesOutput)
+		for _, vulnerability := range vulnerabilityComponent.Vulnerabilities {
+			key := vulnerability.Source + vulnerability.Cve
+			vulnerabilityMap[key] = vulnerability
+		}
+		vulnerabilityComponent.Vulnerabilities = make([]dtos.VulnerabilitiesOutput, 0, len(vulnerabilityMap))
+		for _, vulnerability := range vulnerabilityMap {
+			vulnerabilityComponent.Vulnerabilities = append(vulnerabilityComponent.Vulnerabilities, vulnerability)
+		}
 	}
 }
 
 func MergeOSVAndLocalVulnerabilities(localVulnerabilities dtos.VulnerabilityOutput, osvVulnerabilities dtos.VulnerabilityOutput) dtos.VulnerabilityOutput {
-	uniqueVulnerabilities := make(map[string]bool)
-	vulnerabilities := map[string][]dtos.VulnerabilitiesOutput{}
-	processVulnerabilities(uniqueVulnerabilities, vulnerabilities, osvVulnerabilities)
-	processVulnerabilities(uniqueVulnerabilities, vulnerabilities, localVulnerabilities)
-	return convertToVulnerabilityOutput(vulnerabilities)
+	componentVulnerabilityMap := make(map[string]dtos.VulnerabilityComponentOutput)
+	aggregateVulnerabilities(componentVulnerabilityMap, localVulnerabilities)
+	aggregateVulnerabilities(componentVulnerabilityMap, osvVulnerabilities)
+	removeDuplicatedVulnerabilities(componentVulnerabilityMap)
+	return convertToVulnerabilityOutput(componentVulnerabilityMap)
 }

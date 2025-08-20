@@ -219,6 +219,8 @@ type Entry struct {
 	// DatabaseSpecific contains additional information about the
 	// vulnerability, specific to the Go vulnerability database.
 	DatabaseSpecific DatabaseSpecific `json:"database_specific,omitempty"`
+	// Severity contains additional cvss information
+	Severity []Severity `json:"severity,omitempty"`
 }
 
 // Credit represents a credit for the discovery, confirmation, patch, or
@@ -240,4 +242,9 @@ type DatabaseSpecific struct {
 	// "https://pkg.go.dev/GO-YYYY-XXXX".
 	URL      string `json:"url,omitempty"`
 	Severity string `json:"severity,omitempty"`
+}
+
+type Severity struct {
+	Type  string `json:"type"`
+	Score string `json:"score"`
 }

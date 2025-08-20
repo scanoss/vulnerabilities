@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	_ "log"
 	"net/http"
 	"sync"
 	"time"
@@ -38,8 +37,9 @@ type OSVPackageRequest struct {
 }
 
 type OSVRequest struct {
-	Version string            `json:"version,omitempty"`
-	Package OSVPackageRequest `json:"package"`
+	Version     string            `json:"version,omitempty"`
+	Package     OSVPackageRequest `json:"package"`
+	Requirement string            `json:"requirement,omitempty"`
 }
 
 type OSVUseCase struct {
@@ -66,8 +66,10 @@ func (us OSVUseCase) getOSVRequestsFromDTO(dto []dtos.ComponentDTO) []OSVRequest
 		if element.Requirement != "" {
 			osvRequest := OSVRequest{
 				Package: OSVPackageRequest{
-					Purl: element.Purl + "@" + element.Requirement,
+					Purl: element.Purl,
 				},
+				Version:     element.Version,
+				Requirement: element.Requirement,
 			}
 			osvRequests = append(osvRequests, osvRequest)
 		}
@@ -160,9 +162,10 @@ func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityCo
 
 	response := dtos.VulnerabilityComponentOutput{
 		Purl:            osvRequest.Package.Purl,
+		Requirement:     osvRequest.Requirement,
+		Version:         osvRequest.Version,
 		Vulnerabilities: us.mapOSVVulnerabilities(OSVResponse.Vulns),
 	}
-
 	return response, nil
 }
 
@@ -182,6 +185,22 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 			severity = vul.DatabaseSpecific.Severity
 		}
 
+		cvss := []dtos.Cvss{}
+		if vul.Severity != nil && len(vul.Severity) > 0 {
+			for _, s := range vul.Severity {
+				cvssResult, err := utils.GetCVSS(s.Score)
+				if err != nil {
+					zlog.S.Warnf("Failed to get CVSS severity and score from: %v, %v", s, err)
+					continue
+				}
+				cvss = append(cvss, dtos.Cvss{
+					Cvss:         s.Score,
+					CvssSeverity: cvssResult.Severity,
+					CvssScore:    cvssResult.Score,
+				})
+			}
+		}
+
 		// Map to VulnerabilitiesOutput DTO
 		vulnerabilities = append(vulnerabilities, dtos.VulnerabilitiesOutput{
 			ID:        vul.ID,
@@ -192,6 +211,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 			Modified:  utils.OnlyDate(vul.Modified),
 			Source:    "OSV",
 			URL:       us.OSVInfoBaseURL + "/" + cve,
+			Cvss:      cvss,
 		})
 	}
 	return vulnerabilities

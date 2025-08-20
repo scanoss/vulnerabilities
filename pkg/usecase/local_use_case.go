@@ -43,10 +43,10 @@ func NewLocalVulnerabilitiesUseCase(ctx context.Context, conn *sqlx.Conn, config
 	}
 }
 
-func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDTO) (dtos.VulnerabilityOutput, error) {
+func (d LocalVulnerabilityUseCase) GetVulnerabilities(components []dtos.ComponentDTO) (dtos.VulnerabilityOutput, error) {
 	var vulnOutputs []dtos.VulnerabilityComponentOutput
 	var problems = false
-	for _, c := range request {
+	for _, c := range components {
 		if len(c.Purl) == 0 {
 			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", c)
 			continue
@@ -61,7 +61,7 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDT
 		vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(c.Purl, c.Version)
 
 		if err != nil {
-			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
+			zlog.S.Errorf("Problem encountered extracting vulnerabilities for: %v - %v.", c, err)
 			problems = true
 			continue
 		}
@@ -84,7 +84,7 @@ func (d LocalVulnerabilityUseCase) GetVulnerabilities(request []dtos.ComponentDT
 	}
 
 	if problems {
-		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", request)
+		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", components)
 		return dtos.VulnerabilityOutput{}, errors.New("encountered issues while processing vulnerabilities")
 	}
 
