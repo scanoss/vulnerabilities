@@ -39,3 +39,5 @@ version.txt
 target/scanoss*
 
 scripts/scanoss-vulnerabilities-api
+
+coverage.html
