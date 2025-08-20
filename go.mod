@@ -13,6 +13,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/package-url/packageurl-go v0.1.3
+	github.com/pandatix/go-cvss v0.6.2
 	github.com/scanoss/go-grpc-helper v0.9.0
 	github.com/scanoss/go-models v0.2.0
 	github.com/scanoss/papi v0.5.0

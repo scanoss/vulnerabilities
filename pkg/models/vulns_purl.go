@@ -52,28 +52,22 @@ func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlMod
 }
 
 // GetVulnsByPurl gets vulnerabilities by purl.
-func (m *VulnsForPurlModel) GetVulnsByPurl(purlString, purlReq string) ([]VulnsForPurl, error) {
-	if len(purlString) == 0 {
+func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]VulnsForPurl, error) {
+	if len(purl) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
 	}
 
-	purl, err := utils.PurlFromString(purlString)
+	// used to valid the PURL
+	_, err := utils.PurlFromString(purl)
 	if err != nil {
 		return []VulnsForPurl{}, err
 	}
 
-	purlName := utils.PurlRemoveFromVersionComponent(purlString) // Remove everything after the component name
+	purlName := utils.PurlRemoveFromVersionComponent(purl) // Remove everything after the component name
 
-	if len(purl.Version) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
-		ver := utils.GetVersionFromReq(purlReq)
-		if len(ver) > 0 {
-			purl.Version = ver // Switch to exact version search (faster)
-		}
-	}
-
-	if len(purl.Version) > 0 {
-		return m.GetVulnsByPurlVersion(purlName, purl.Version)
+	if len(version) > 0 {
+		return m.GetVulnsByPurlVersion(purlName, version)
 	}
 	return m.GetVulnsByPurlName(purlName)
 }
