@@ -17,12 +17,18 @@
 package usecase
 
 import (
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"testing"
 
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
 func TestOSVUseCase(t *testing.T) {
+	err := zlog.NewSugaredDevLogger()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
+	}
+	defer zlog.SyncZap()
 	testCases := []struct {
 		name  string
 		input []dtos.ComponentDTO
