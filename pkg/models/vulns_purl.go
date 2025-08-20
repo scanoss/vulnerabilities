@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
@@ -42,8 +43,89 @@ type VulnsForPurl struct {
 	Summary   string         `db:"summary"`
 }
 
+type VulnWithVersionRange struct {
+	VulnsForPurl
+	VersionStartIncluding string `db:"version_start_including"`
+	VersionStartExcluding string `db:"version_start_excluding"`
+	VersionEndIncluding   string `db:"version_end_including"`
+	VersionEndExcluding   string `db:"version_end_excluding"`
+}
+
 type OnlyPurl struct {
 	Purl string `db:"purl"`
+}
+
+// compareVersions compares two version strings semantically
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+func compareVersions(v1, v2 string) int {
+	if v1 == v2 {
+		return 0
+	}
+	
+	parts1 := strings.Split(v1, ".")
+	parts2 := strings.Split(v2, ".")
+	
+	maxLen := len(parts1)
+	if len(parts2) > maxLen {
+		maxLen = len(parts2)
+	}
+	
+	for i := 0; i < maxLen; i++ {
+		var p1, p2 int
+		var err error
+		
+		if i < len(parts1) {
+			p1, err = strconv.Atoi(parts1[i])
+			if err != nil {
+				return strings.Compare(v1, v2)
+			}
+		}
+		
+		if i < len(parts2) {
+			p2, err = strconv.Atoi(parts2[i])
+			if err != nil {
+				return strings.Compare(v1, v2)
+			}
+		}
+		
+		if p1 < p2 {
+			return -1
+		}
+		if p1 > p2 {
+			return 1
+		}
+	}
+	
+	return 0
+}
+
+// isVersionInRange checks if a version falls within the specified range
+func isVersionInRange(version string, startIncl, startExcl, endIncl, endExcl string) bool {
+	// Handle exact matches first
+	if startIncl != "" && version == startIncl {
+		return true
+	}
+	if endIncl != "" && version == endIncl {
+		return true
+	}
+	
+	// Check start range
+	startOk := true
+	if startExcl != "" {
+		startOk = compareVersions(version, startExcl) > 0
+	} else if startIncl != "" {
+		startOk = compareVersions(version, startIncl) >= 0
+	}
+	
+	// Check end range
+	endOk := true
+	if endExcl != "" {
+		endOk = compareVersions(version, endExcl) < 0
+	} else if endIncl != "" {
+		endOk = compareVersions(version, endIncl) <= 0
+	}
+	
+	return startOk && endOk
 }
 
 // NewVulnsForPurlModel creates a new instance of the CPE Purl Model.
@@ -112,44 +194,34 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
-	var vulns []VulnsForPurl
+	var vulnsWithRange []VulnWithVersionRange
 	purlName = strings.TrimSpace(purlName)
-	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
+	err := m.conn.SelectContext(m.ctx, &vulnsWithRange,
+		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary, "+
+			"nmci.version_start_including, nmci.version_start_excluding, "+
+			"nmci.version_end_including, nmci.version_end_excluding "+
 			"from "+
 			"t_short_cpe_purl_exported tscpe, "+
 			"short_cpes sc, "+
-			"cves c2 "+
-			"inner join nvd_match_criteria_ids nmci "+
-			"on "+
-			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
+			"cves c2, "+
+			"nvd_match_criteria_ids nmci "+
 			"where "+
 			"tscpe.purl = $1 "+
-			"and ($2 = nmci.version_start_including or $2 = nmci.version_end_including "+
-			"or "+
-			"( "+
-			"( "+
-			"(nmci.version_start_excluding = '' and nmci.version_start_including = '') "+
-			"or "+
-			"(nmci.version_start_excluding != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20)) "+
-			"or "+
-			"(nmci.version_start_including != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20)) "+
-			") and "+
-			"( "+
-			"(nmci.version_end_excluding = '' and nmci.version_end_including = '') "+
-			"or "+
-			"(nmci.version_end_excluding != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))"+
-			"or "+
-			"(nmci.version_end_including != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20)) "+
-			")"+
-			")"+
-			")"+
 			"and tscpe.cpe_id = sc.id "+
-			"and sc.id = nmci.short_cpe_id;", purlName, purlVersion)
+			"and sc.id = nmci.short_cpe_id "+
+			"and trim(CAST(c2.match_criteria_ids AS TEXT), '{}') LIKE '%' || nmci.match_criteria_id || '%'", purlName)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
+	}
+
+	var vulns []VulnsForPurl
+	for _, v := range vulnsWithRange {
+		if isVersionInRange(purlVersion, v.VersionStartIncluding, v.VersionStartExcluding, 
+			v.VersionEndIncluding, v.VersionEndExcluding) {
+			vulns = append(vulns, v.VulnsForPurl)
+		}
 	}
 
 	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
