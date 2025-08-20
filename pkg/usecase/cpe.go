@@ -55,6 +55,7 @@ func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponent
 		var item dtos.CpeComponentOutput
 		item.Requirement = c.Requirement
 		item.Purl = c.Purl
+		item.Cpes = []string{}
 
 		component, err := sc.Component.GetComponent(d.ctx, types.ComponentRequest{Purl: c.Purl, Requirement: c.Requirement})
 		if err != nil {
