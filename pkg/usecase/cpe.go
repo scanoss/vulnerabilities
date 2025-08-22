@@ -19,6 +19,7 @@ package usecase
 import (
 	"context"
 	"errors"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/scanoss/go-models/pkg/scanoss"
 	"github.com/scanoss/go-models/pkg/types"
@@ -42,7 +43,6 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig,
 }
 
 func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
-
 	sc := scanoss.New(d.db)
 	var out []dtos.CpeComponentOutput
 	var problems = false

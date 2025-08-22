@@ -17,8 +17,9 @@
 package usecase
 
 import (
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"testing"
+
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
