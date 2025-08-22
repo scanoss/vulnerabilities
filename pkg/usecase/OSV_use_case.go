@@ -186,7 +186,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 		}
 
 		cvss := []dtos.Cvss{}
-		if vul.Severity != nil && len(vul.Severity) > 0 {
+		if vul.Severity != nil {
 			for _, s := range vul.Severity {
 				cvssResult, err := utils.GetCVSS(s.Score)
 				if err != nil {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"

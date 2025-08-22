@@ -50,10 +50,7 @@ func TestGetCpeUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when loading test data", err)
 	}
-	var components []dtos.ComponentDTO
-
-	// Initialize with your data
-	components = []dtos.ComponentDTO{
+	var components = []dtos.ComponentDTO{
 		{
 			Purl: "pkg:github/tseliot/screen-resolution-extra",
 		},

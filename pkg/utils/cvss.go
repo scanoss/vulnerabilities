@@ -37,7 +37,7 @@ func GetCVSS(vector string) (*CVSSResult, error) {
 		return parseCVSS40(vector)
 
 	default:
-		return result, errors.New("Unknown parser")
+		return result, errors.New("unknown parser")
 	}
 }
 
@@ -117,7 +117,7 @@ func parseCVSS20(vector string) (*CVSSResult, error) {
 	return result, nil
 }
 
-// See: https://www.first.org/cvss/v3-0/specification-document - Qualitative Severity Rating Scale
+// See: https://www.first.org/cvss/v3-0/specification-document - Qualitative Severity Rating Scale.
 func getSeverityRating(score float64) string {
 	switch {
 	case score >= 9.0:
@@ -133,7 +133,7 @@ func getSeverityRating(score float64) string {
 	}
 }
 
-// TODO: Check if there is an official severity rating
+// TODO: Check if there is an official severity rating.
 func getSeverityRatingV2(score float64) string {
 	switch {
 	case score >= 7.0:
