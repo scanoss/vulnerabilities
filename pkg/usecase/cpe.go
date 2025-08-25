@@ -18,7 +18,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scanoss/go-models/pkg/scanoss"
@@ -45,14 +44,16 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig,
 func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
 	sc := scanoss.New(d.db)
 	var out []dtos.CpeComponentOutput
-	var problems = false
-	for _, c := range components {
+
+	for i, c := range components {
 		if len(c.Purl) == 0 {
 			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", c)
 			continue
 		}
 		// VulnerabilitiesOutput
 		var item dtos.CpeComponentOutput
+		components[i].Version = c.Requirement
+		item.Version = c.Requirement
 		item.Requirement = c.Requirement
 		item.Purl = c.Purl
 		item.Cpes = []string{}
@@ -60,28 +61,22 @@ func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponent
 		component, err := sc.Component.GetComponent(d.ctx, types.ComponentRequest{Purl: c.Purl, Requirement: c.Requirement})
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
-			problems = true
 			continue
 		}
-		item.Version = component.Version
+
+		if component.Version != "" {
+			item.Version = component.Version
+		}
 
 		cpePurl, err := d.cpePurl.GetCpeByPurl(component.Purl, component.Version)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}
-		zlog.S.Debugf("Output Vulnerabilities: %v", cpePurl)
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
-			problems = true
 			continue
-			// TODO add a placeholder in the response?
 		}
 		out = append(out, item)
-	}
-
-	if problems {
-		zlog.S.Errorf("Encountered issues while processing vulnerabilities: %v", components)
-		return []dtos.CpeComponentOutput{}, errors.New("encountered issues while processing vulnerabilities")
 	}
 
 	return out, nil
