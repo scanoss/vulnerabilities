@@ -185,7 +185,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 			severity = vul.DatabaseSpecific.Severity
 		}
 
-		cvss := []dtos.Cvss{}
+		cvss := []dtos.CVSS{}
 		if vul.Severity != nil {
 			for _, s := range vul.Severity {
 				cvssResult, err := utils.GetCVSS(s.Score)
@@ -193,7 +193,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 					zlog.S.Warnf("Failed to get CVSS severity and score from: %v, %v", s, err)
 					continue
 				}
-				cvss = append(cvss, dtos.Cvss{
+				cvss = append(cvss, dtos.CVSS{
 					Cvss:         s.Score,
 					CvssSeverity: cvssResult.Severity,
 					CvssScore:    cvssResult.Score,
