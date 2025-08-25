@@ -18,11 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added gRPC `GetComponentsCpes` and REST endpoint POST `/api/v2/vulnerabilities/cpes/components`
 - Added gRPC `GetComponentVulnerabilities` and REST endpoint GET `/api/v2/vulnerabilities/component`
 - Added gRPC `GetComponentsVulnerabilities` and REST endpoint POST `/api/v2/vulnerabilities/components`
+
 ### Changed
 - Integrated the scanoss [go-model module](https://github.com/scanoss/go-models)
 - Refactored request and output adapters
 - Refactored CPE and Vulnerability use cases to accept the new ComponentDTO struct
 - Refactored vulnerability service to maintain both legacy and new vulnerability and CPE handlers
+- Updated direct dependencies
 
 ## [0.4.0] - 2025/01/24
 ### Added
