@@ -1,4 +1,3 @@
-
 #vars
 IMAGE_NAME=scanoss-vulnerabilities
 REPO=scanoss
@@ -32,14 +31,28 @@ unit_test_cover: version ## Run all unit tests in the pkg folder
 	@echo "Running unit test framework with coverage..."
 	go test -cover ./pkg/... 
 
-lint_local: ## Run local instance of linting across the code base
-	golangci-lint run ./...
+lint_local_clean: ## Cleanup the local cache from the linter
+	@echo "Cleaning linter cache..."
+	golangci-lint cache clean
+
+lint_local: lint_local_clean ## Run local instance of linting across the code base
+	@echo "Running linter on codebase..."
+	golangci-lint run ./pkg/... ./cmd/...
 
 lint_local_fix: ## Run local instance of linting across the code base including auto-fixing
-	golangci-lint run --fix ./...
+	@echo "Running linter with fix option..."
+	golangci-lint run --fix ./pkg/... ./cmd/...
 
 lint_docker: ## Run docker instance of linting across the code base
-	docker run --rm -v $(pwd):/app -v ~/.cache/golangci-lint/v1.50.1:/root/.cache -w /app golangci/golangci-lint:v1.50.1 golangci-lint run ./...
+	docker run --rm -v $(PWD):/app -v ~/.cache/golangci-lint/v1.64.8:/root/.cache -w /app golangci/golangci-lint:v1.64.8 golangci-lint run ./pkg/... ./cmd/...
+
+run_local:  ## Launch the API locally for test
+	@echo "Launching API locally..."
+	go run cmd/server/main.go -json-config config/app-config-dev.json -debug
+
+run_local_env:  ## Launch the API ENV locally for test
+	@echo "Launching API ENV locally..."
+	go run cmd/server/main.go -env-config .env -debug
 
 ghcr_build: version  ## Build GitHub container image
 	@echo "Building GHCR container image..."
@@ -55,10 +68,6 @@ ghcr_push:  ## Push the GH container image to GH Packages
 	docker push $(GHCR_FULLNAME):latest
 
 ghcr_all: ghcr_build ghcr_tag ghcr_push  ## Execute all GitHub Package container actions
-
-run_local:  ## Launch the API locally for test
-	@echo "Launching API locally..."
-	go run cmd/server/main.go -json-config config/app-config-dev.json -debug
 
 build_amd: version  ## Build an AMD 64 binary
 	@echo "Building AMD binary $(VERSION)..."
