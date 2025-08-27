@@ -14,7 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Handle all interaction with the mines table
+// Handle all interaction with the mines table.
 
 package models
 

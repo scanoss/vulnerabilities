@@ -67,9 +67,6 @@ func TestGetCpeUseCase(t *testing.T) {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 	cpeUc := NewCpe(ctx, conn, myConfig, db)
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when parsing input json", err)
-	}
 	cpes, err := cpeUc.GetCpes(components)
 	if err != nil {
 		// The GetCpes method now properly returns errors for problematic data

@@ -132,18 +132,15 @@ func FilterCpesByRequirement(cpes []CpePurl, purlReq string) []CpePurl {
 		zlog.S.Infof("No cpes in filterCpes()")
 		return []CpePurl{}
 	}
-
 	var c *semver.Constraints
-
 	if len(purlReq) > 0 {
 		zlog.S.Debugf("Building version constraint for %v", purlReq)
 		var err error
 		c, err = semver.NewConstraint(purlReq)
 		if err != nil {
-			zlog.S.Warnf("Encountered an issue parsing version constraint string '%v' (%v,%v): %v", purlReq, err)
+			zlog.S.Warnf("Encountered an issue parsing version constraint string '%v': %v", purlReq, err)
 		}
 	}
-
 	zlog.S.Debugf("Filtering cpes by requirement...")
 	output := []CpePurl{}
 	for _, cpe := range cpes {
