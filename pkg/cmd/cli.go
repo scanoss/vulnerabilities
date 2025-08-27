@@ -16,4 +16,4 @@
 
 package cmd
 
-// TODO Add CLI code processing here
+// TODO Add CLI code processing here.

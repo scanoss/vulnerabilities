@@ -14,7 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// This file common tasks for the models package
+// This file common tasks for the models package.
 
 package models
 
