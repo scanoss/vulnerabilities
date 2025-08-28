@@ -34,6 +34,7 @@ version.txt
 /app-config*
 
 .idea
+.vscode
 .DS_Store
 
 target/scanoss*
