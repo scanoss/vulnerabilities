@@ -39,5 +39,5 @@ jobs:
           files: |
             target/scanoss-vulnerabilities-api-linux-amd64
             target/scanoss-vulnerabilities-api-linux-arm64
-            scanoss-vulnerabilities_linux-amd64_${{ github.ref_name }}-1.tgz
-            scanoss-vulnerabilities_linux-arm64_${{ github.ref_name }}-1.tgz
+            scanoss-vulnerabilities-api_linux-amd64_${{ github.ref_name }}-1.tgz
+            scanoss-vulnerabilities-api_linux-arm64_${{ github.ref_name }}-1.tgz
