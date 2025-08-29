@@ -16,7 +16,7 @@ require (
 	github.com/pandatix/go-cvss v0.6.2
 	github.com/scanoss/go-grpc-helper v0.9.0
 	github.com/scanoss/go-models v0.2.0
-	github.com/scanoss/papi v0.15.0
+	github.com/scanoss/papi v0.17.0
 	github.com/scanoss/zap-logging-helper v0.4.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.75.0
