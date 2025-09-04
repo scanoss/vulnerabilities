@@ -83,8 +83,8 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 	err := m.conn.SelectContext(m.ctx, &allCpes,
 		"SELECT tcp.cpe, v.version_name, v.semver "+
 			"FROM cpes tcp "+
-			"INNER JOIN t_short_cpe_purl_exported tscp ON tcp.short_cpe_id = tscp.cpe_id  "+
-			"INNER JOIN purls tp ON tscp.purl_id = tp.id "+
+			"INNER JOIN short_cpe_purl scp ON tcp.short_cpe_id = scp.cpe_id  "+
+			"INNER JOIN purls tp ON scp.purl_id = tp.id "+
 			"INNER JOIN versions v ON tcp.version_id = v.id "+
 			"WHERE tp.purl  = $1"+
 			" ORDER BY v.version_name NULLS LAST;",
@@ -114,7 +114,7 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 	err := m.conn.SelectContext(m.ctx, &cpuPurls,
 		"SELECT tc.cpe, v.version_name, v.semver "+
 			"FROM cpes tc "+
-			"INNER JOIN t_short_cpe_purl_exported scp ON tc.short_cpe_id = scp.cpe_id "+
+			"INNER JOIN short_cpe_purl scp ON tc.short_cpe_id = scp.cpe_id "+
 			"INNER JOIN purls p ON scp.purl_id = p.id "+
 			"INNER JOIN versions v ON tc.version_id = v.id "+
 			" WHERE p.purl = $1 AND v.version_name=$2;",
