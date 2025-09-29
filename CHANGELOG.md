@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
+## [0.6.1] - 2025/09/29
+### Changed
+- Updated default ports: REST `40052`, gRPC `50052`, and logging `66052`
+
 ## [0.6.0] - 2025/08/29
 ### Changed
 - Replaced REST endpoint GET `/api/v2/vulnerabilities/cpes/component` by `/v2/vulnerabilities/cpes/component`
@@ -64,3 +68,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.4.0]: https://github.com/scanoss/vulnerabilities/compare/v0.3.0...v0.4.0
 [0.5.0]: https://github.com/scanoss/vulnerabilities/compare/v0.4.0...v0.5.0
 [0.6.0]: https://github.com/scanoss/vulnerabilities/compare/v0.5.0...v0.6.0
+[0.6.1]: https://github.com/scanoss/vulnerabilities/compare/v0.6.0...v0.6.1
