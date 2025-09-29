@@ -79,6 +79,12 @@ build_arm: version  ## Build an ARM 64 binary
 	go generate ./pkg/cmd/server.go
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-w -s" -o ./target/scanoss-vulnerabilities-api-linux-arm64 ./cmd/server
 
+build_arm: version  ## Build an ARM 64 binary
+	@echo "Building ARM binary $(VERSION)..."
+	go generate ./pkg/cmd/server.go
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-w -s" -o ./target/scanoss-vulnerabilities-api-darwin-arm64 ./cmd/server
+
+
 package: package_amd  ## Build & Package an AMD 64 binary
 
 package_amd: version  ## Build & Package an AMD 64 binary
