@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
+## [0.6.2] - 2025/10/17
+### Added
+- Added version bump workflow for automated tag management
+
+### Changed
+- Updated CI workflow to use actions/checkout@v4 and actions/setup-go@v5
+- Updated Go version to 1.24.x in CI workflows
+
 ## [0.6.1] - 2025/09/29
 ### Changed
 - Updated default ports: REST `40052`, gRPC `50052`, and logging `66052`
@@ -69,3 +77,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.5.0]: https://github.com/scanoss/vulnerabilities/compare/v0.4.0...v0.5.0
 [0.6.0]: https://github.com/scanoss/vulnerabilities/compare/v0.5.0...v0.6.0
 [0.6.1]: https://github.com/scanoss/vulnerabilities/compare/v0.6.0...v0.6.1
+[0.6.2]: https://github.com/scanoss/vulnerabilities/compare/v0.6.1...v0.6.2
