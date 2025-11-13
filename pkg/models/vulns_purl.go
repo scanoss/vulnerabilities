@@ -108,38 +108,40 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
-	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
-			"from "+
-			"short_cpe_purl scp, "+
-			"short_cpes sc, "+
-			"cves c2 "+
-			"inner join nvd_match_criteria_ids nmci "+
-			"on "+
-			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
-			"where "+
-			"scp.purl = $1 "+
-			"and ($2 = nmci.version_start_including or $2 = nmci.version_end_including "+
-			"or "+
-			"( "+
-			"( "+
-			"(nmci.version_start_excluding = '' and nmci.version_start_including = '') "+
-			"or "+
-			"(nmci.version_start_excluding != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20)) "+
-			"or "+
-			"(nmci.version_start_including != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20)) "+
-			") and "+
-			"( "+
-			"(nmci.version_end_excluding = '' and nmci.version_end_including = '') "+
-			"or "+
-			"(nmci.version_end_excluding != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))"+
-			"or "+
-			"(nmci.version_end_including != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20)) "+
-			")"+
-			")"+
-			")"+
-			"and scp.cpe_id = sc.id "+
-			"and sc.id = nmci.short_cpe_id;", purlName, purlVersion)
+	query := `WITH matching_criteria AS (
+	  SELECT array_agg(nmci.match_criteria_id) as criteria_ids
+	  FROM short_cpe_purl scp
+	  INNER JOIN short_cpes sc ON sc.id = scp.cpe_id
+	  INNER JOIN nvd_match_criteria_ids nmci ON nmci.short_cpe_id = sc.id
+	  WHERE scp.purl = $1
+		AND (
+			$2 = nmci.version_start_including
+			OR $2 = nmci.version_end_including
+			OR (
+				(
+					(nmci.version_start_excluding = '' AND nmci.version_start_including = '')
+					OR (nmci.version_start_excluding != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20))
+					OR (nmci.version_start_including != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20))
+				)
+				AND (
+					(nmci.version_end_excluding = '' AND nmci.version_end_including = '')
+					OR (nmci.version_end_excluding != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))
+					OR (nmci.version_end_including != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20))
+				)
+			)
+		)
+	)
+	SELECT DISTINCT
+		c2.cve,
+		c2.severity,
+		c2.published,
+		c2.modified,
+		c2.summary
+	FROM cves c2, matching_criteria mc
+	WHERE c2.match_criteria_ids && mc.criteria_ids
+	ORDER BY c2.cve, c2.severity, c2.published, c2.modified, c2.summary;`
+
+	err := m.conn.SelectContext(m.ctx, &vulns, query, purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)

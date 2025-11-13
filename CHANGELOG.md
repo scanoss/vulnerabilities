@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
+## [0.7.0] - 2025/11/13
+### Changed
+- Optimized query performance for retrieving vulnerabilities by PURL version using CTE (Common Table Expression) approach in `pkg/models/vulns_purl.go:111`
+
 ## [0.6.2] - 2025/10/17
 ### Added
 - Added version bump workflow for automated tag management
