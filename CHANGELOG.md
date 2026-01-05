@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Included Exploit Prediction Scoring System (EPSS) to vulnerability response
 ### Changed
+- Refactored OSV use case
 - Upgraded `scanoss/papi` to v0.28.0
 
 ## [0.7.0] - 2025/11/13

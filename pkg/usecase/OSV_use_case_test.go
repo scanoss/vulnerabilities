@@ -17,10 +17,13 @@
 package usecase
 
 import (
+	"context"
 	"testing"
 
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+	"scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
@@ -30,6 +33,14 @@ func TestOSVUseCase(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
+	ctx := ctxzap.ToContext(context.Background(), zlog.L)
+	s := ctxzap.Extract(ctx).Sugar()
+
+	serverConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load Config: %v", err)
+	}
+
 	testCases := []struct {
 		name  string
 		input []dtos.ComponentDTO
@@ -47,9 +58,7 @@ func TestOSVUseCase(t *testing.T) {
 			},
 		},
 	}
-	OSVBaseURL := "https://api.osv.dev/v1"
-	OSVInfoBaseURL := "https://test.osv.dev/vulnerability"
-	OSVUseCase := NewOSVUseCase(OSVBaseURL, OSVInfoBaseURL)
+	OSVUseCase := NewOSVUseCase(s, serverConfig)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := OSVUseCase.Execute(tc.input)
