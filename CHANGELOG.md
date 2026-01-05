@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
+## [0.8.0] - 2026/01/05
+### Added
+- Included Exploit Prediction Scoring System (EPSS) to vulnerability response
+### Changed
+- Upgraded `scanoss/papi` to v0.28.0
+
 ## [0.7.0] - 2025/11/13
 ### Changed
 - Optimized query performance for retrieving vulnerabilities by PURL version using CTE (Common Table Expression) approach in `pkg/models/vulns_purl.go:111`
@@ -82,3 +88,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.6.0]: https://github.com/scanoss/vulnerabilities/compare/v0.5.0...v0.6.0
 [0.6.1]: https://github.com/scanoss/vulnerabilities/compare/v0.6.0...v0.6.1
 [0.6.2]: https://github.com/scanoss/vulnerabilities/compare/v0.6.1...v0.6.2
+[0.7.0]: https://github.com/scanoss/vulnerabilities/compare/v0.6.2...v0.7.0
+[0.8.0]: https://github.com/scanoss/vulnerabilities/compare/v0.7.0...v0.8.0
