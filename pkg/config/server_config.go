@@ -76,6 +76,7 @@ type ServerConfig struct {
 			APIBaseURL  string `env:"VULN_OSV_API_BASE_URL"`
 			InfoBaseURL string `env:"VULN_OSV_INFO_BASE_URL"`
 			Enabled     bool   `env:"VULN_OSV_SOURCE_ENABLED"`
+			APIWorkers  int    `env:"VULN_OSV_API_WORKERS"`
 		}
 		SCANOSS struct {
 			Enabled bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
@@ -121,6 +122,7 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Source.OSV.APIBaseURL = "https://api.osv.dev/v1"
 	cfg.Source.OSV.InfoBaseURL = "https://osv.dev/vulnerability"
 	cfg.Source.OSV.Enabled = true
+	cfg.Source.OSV.APIWorkers = 5
 	cfg.Source.SCANOSS.Enabled = true
 }
 

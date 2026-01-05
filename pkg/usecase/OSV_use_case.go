@@ -20,10 +20,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
-	"sync"
 	"time"
+
+	"scanoss.com/vulnerabilities/pkg/config"
 
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/utils"
@@ -45,18 +46,18 @@ type OSVRequest struct {
 type OSVUseCase struct {
 	OSVAPIBaseURL  string
 	OSVInfoBaseURL string
-	semaphore      chan struct{} // Used to limit concurrent requests
-	client         *http.Client  // Single shared
+	client         *http.Client // Single shared
+	MaxAPIWorkers  int
 }
 
-func NewOSVUseCase(osvAPIBaseURL string, osvInfoBaseURL string) *OSVUseCase {
+func NewOSVUseCase(config *config.ServerConfig) *OSVUseCase {
 	return &OSVUseCase{
-		OSVAPIBaseURL:  osvAPIBaseURL,
-		OSVInfoBaseURL: osvInfoBaseURL,
-		semaphore:      make(chan struct{}, 4),
+		OSVAPIBaseURL:  config.Source.OSV.APIBaseURL,
+		OSVInfoBaseURL: config.Source.OSV.InfoBaseURL,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		MaxAPIWorkers: config.Source.OSV.APIWorkers,
 	}
 }
 
@@ -83,90 +84,100 @@ func (us OSVUseCase) Execute(dto []dtos.ComponentDTO) dtos.VulnerabilityOutput {
 }
 
 func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOutput {
-	var wg sync.WaitGroup
+	jobs := make(chan OSVRequest, len(requests))
 	ctx, cancel := context.WithCancel(context.Background())
-	results := make(chan dtos.VulnerabilityComponentOutput, len(requests))
 	defer cancel()
-	for _, request := range requests {
-		wg.Add(1)
-		go func(req OSVRequest) {
-			defer wg.Done()
-			// Try to acquire semaphore
-			us.semaphore <- struct{}{}        // Will block if 4 requests are already running
-			defer func() { <-us.semaphore }() // Release when done
-
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				r, _ := us.processRequest(req)
-				results <- r
-			}
-		}(request)
+	results := make(chan dtos.VulnerabilityComponentOutput, len(requests))
+	for i := 0; i < us.MaxAPIWorkers; i++ {
+		go us.processRequest(ctx, jobs, results)
 	}
-	wg.Wait()
-	close(results)
+
+	for _, r := range requests {
+		jobs <- r
+	}
+	close(jobs)
 
 	// Collect all results into a slice
 	var response = dtos.VulnerabilityOutput{
 		Components: []dtos.VulnerabilityComponentOutput{},
 	}
-	for result := range results {
+
+	for i := 0; i < len(requests); i++ {
+		result := <-results
 		response.Components = append(response.Components, result)
 	}
 
 	return response
 }
 
-func (us OSVUseCase) processRequest(osvRequest OSVRequest) (dtos.VulnerabilityComponentOutput, error) {
-	out, err := json.Marshal(osvRequest)
-	if err != nil {
-		zlog.S.Errorf("Failed to marshal request: %s", err)
-		return dtos.VulnerabilityComponentOutput{}, err
-	}
+func (us OSVUseCase) processRequest(ctx context.Context, jobs chan OSVRequest, results chan dtos.VulnerabilityComponentOutput) {
+	for {
+		select {
+		case j, ok := <-jobs:
+			if !ok {
+				return // Channel closed, stop worker
+			}
 
-	req, err := http.NewRequest(http.MethodPost, us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
-	if err != nil {
-		zlog.S.Errorf("Failed to create HTTP request: %s", err)
-		return dtos.VulnerabilityComponentOutput{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
+			response := dtos.VulnerabilityComponentOutput{
+				Purl:        j.Package.Purl,
+				Requirement: j.Requirement,
+				Version:     j.Version,
+			}
 
-	// Use a shared HTTP client to avoid creating a new one every call
-	resp, err := us.client.Do(req)
-	if err != nil {
-		zlog.S.Errorf("HTTP request failed: %s", err)
-		return dtos.VulnerabilityComponentOutput{}, err
-	}
+			out, err := json.Marshal(struct {
+				Version string            `json:"version,omitempty"`
+				Package OSVPackageRequest `json:"package"`
+			}{
+				Version: j.Version,
+				Package: j.Package,
+			})
+			if err != nil {
+				zlog.S.Errorf("Failed to marshal request: %s", err)
+				results <- response
+				continue
+			}
 
-	defer func(Body io.ReadCloser) {
-		err = Body.Close()
-		if err != nil {
-			zlog.S.Errorf("Failed to close HTTP response body: %s", err)
+			req, err := http.NewRequest(http.MethodPost, us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
+			if err != nil {
+				zlog.S.Errorf("Failed to create HTTP request: %s", err)
+				results <- response
+				continue
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			// Use a shared HTTP client to avoid creating a new one every call
+			resp, err := us.client.Do(req)
+			if err != nil {
+				zlog.S.Errorf("HTTP request failed: %s", err)
+				results <- response
+				continue
+			}
+
+			// Check for non-200 HTTP responses
+			if resp.StatusCode != http.StatusOK {
+				zlog.S.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
+				resp.Body.Close()
+				results <- response
+				continue
+			}
+
+			var OSVResponse dtos.OSVResponseDTO
+			err = json.NewDecoder(resp.Body).Decode(&OSVResponse)
+			resp.Body.Close() // Close AFTER reading
+
+			if err != nil {
+				zlog.S.Errorf("Failed to decode response: %s", err)
+				results <- response
+				continue
+			}
+			response.Vulnerabilities = us.mapOSVVulnerabilities(OSVResponse.Vulns)
+			results <- response
+		case <-ctx.Done():
+			// Cancellation signal received: stop working and return immediately
+			fmt.Println("Worker: Cancellation signal received, stopping.")
+			return
 		}
-	}(resp.Body)
-
-	// Check for non-200 HTTP responses
-	if resp.StatusCode != http.StatusOK {
-		zlog.S.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
-		return dtos.VulnerabilityComponentOutput{}, err
 	}
-
-	var OSVResponse dtos.OSVResponseDTO
-	err = json.NewDecoder(resp.Body).Decode(&OSVResponse)
-	if err != nil {
-		// Handle error
-		zlog.S.Errorf("Failed to decode response: %s", err)
-		return dtos.VulnerabilityComponentOutput{}, err
-	}
-
-	response := dtos.VulnerabilityComponentOutput{
-		Purl:            osvRequest.Package.Purl,
-		Requirement:     osvRequest.Requirement,
-		Version:         osvRequest.Version,
-		Vulnerabilities: us.mapOSVVulnerabilities(OSVResponse.Vulns),
-	}
-	return response, nil
 }
 
 // mapOSVVulnerabilities converts OSV vulnerabilities to the required DTO structure.
