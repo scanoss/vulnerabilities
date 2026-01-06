@@ -23,6 +23,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/jmoiron/sqlx"
+	purlhelper "github.com/scanoss/go-purl-helper/pkg"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
@@ -49,7 +50,7 @@ func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, erro
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []CpePurl{}, errors.New("please specify a valid Purl String to query")
 	}
-	purl, err := utils.PurlFromString(purlString)
+	purl, err := purlhelper.PurlFromString(purlString)
 	if err != nil {
 		return []CpePurl{}, err
 	}
@@ -58,7 +59,7 @@ func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, erro
 	purlString = utils.PurlRemoveFromVersionComponent(purlString) // Make sure to get the minimum purl pkg:github...
 
 	if len(purlVersion) == 0 && len(purlReq) > 0 { // No version specified, but we might have a specific version in the Requirement
-		ver := utils.GetVersionFromReq(purlReq)
+		ver := purlhelper.GetVersionFromReq(purlReq)
 		if len(ver) > 0 {
 			purlVersion = ver // Switch to exact version search (faster)
 			purlReq = ""
