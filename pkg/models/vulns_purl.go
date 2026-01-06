@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	purlhelper "github.com/scanoss/go-purl-helper/pkg"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"github.com/jmoiron/sqlx"
@@ -59,7 +60,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]Vulns
 	}
 
 	// used to valid the PURL
-	_, err := utils.PurlFromString(purl)
+	_, err := purlhelper.PurlFromString(purl)
 	if err != nil {
 		return []VulnsForPurl{}, err
 	}
