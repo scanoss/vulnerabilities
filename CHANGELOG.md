@@ -12,8 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.0] - 2026/01/07
 ### Added
 - Included Exploit Prediction Scoring System (EPSS) to vulnerability response
+- Added configurable worker pool for local vulnerability processing (`VULN_SCANOSS_WORKERS`)
 ### Changed
 - Refactored OSV use case
+- Refactored local vulnerability use case with multithreading support and context cancellation handling
 - Upgraded `scanoss/papi` to v0.28.0
 
 ## [0.7.0] - 2025/11/13

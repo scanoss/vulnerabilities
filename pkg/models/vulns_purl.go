@@ -30,8 +30,7 @@ import (
 )
 
 type VulnsForPurlModel struct {
-	ctx  context.Context
-	conn *sqlx.Conn
+	db *sqlx.DB
 }
 
 type VulnsForPurl struct {
@@ -48,12 +47,12 @@ type OnlyPurl struct {
 }
 
 // NewVulnsForPurlModel creates a new instance of the CPE Purl Model.
-func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlModel {
-	return &VulnsForPurlModel{ctx: ctx, conn: conn}
+func NewVulnsForPurlModel(db *sqlx.DB) *VulnsForPurlModel {
+	return &VulnsForPurlModel{db: db}
 }
 
 // GetVulnsByPurl gets vulnerabilities by purl.
-func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurl(ctx context.Context, purl string, version string) ([]VulnsForPurl, error) {
 	if len(purl) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
@@ -68,13 +67,13 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]Vulns
 	purlName := utils.PurlRemoveFromVersionComponent(purl) // Remove everything after the component name
 
 	if len(version) > 0 {
-		return m.GetVulnsByPurlVersion(purlName, version)
+		return m.GetVulnsByPurlVersion(ctx, purlName, version)
 	}
-	return m.GetVulnsByPurlName(purlName)
+	return m.GetVulnsByPurlName(ctx, purlName)
 }
 
 // GetVulnsByPurlName searches for component details of the specified Purl Name/Type (and optional requirement).
-func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlName(ctx context.Context, purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
@@ -82,7 +81,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
-	err := m.conn.SelectContext(m.ctx, &vulns,
+	err := m.db.SelectContext(ctx, &vulns,
 		"SELECT c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
 			"FROM short_cpe_purl scp "+
 			"INNER JOIN cpes c ON scp.cpe_id = c.id "+
@@ -101,7 +100,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	return vulns, nil
 }
 
-func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlVersion(ctx context.Context, purlName string, purlVersion string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
@@ -142,7 +141,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 	WHERE c2.match_criteria_ids && mc.criteria_ids
 	ORDER BY c2.cve, c2.severity, c2.published, c2.modified, c2.summary;`
 
-	err := m.conn.SelectContext(m.ctx, &vulns, query, purlName, purlVersion)
+	err := m.db.SelectContext(ctx, &vulns, query, purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
