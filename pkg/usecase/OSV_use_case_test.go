@@ -61,7 +61,7 @@ func TestOSVUseCase(t *testing.T) {
 	OSVUseCase := NewOSVUseCase(s, serverConfig)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			r := OSVUseCase.Execute(tc.input)
+			r := OSVUseCase.Execute(ctx, tc.input)
 			if len(r.Components) == 0 {
 				t.Errorf("Expected Purls to have elements, got empty slice")
 			}

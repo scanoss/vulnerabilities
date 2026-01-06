@@ -81,15 +81,15 @@ func (us OSVUseCase) getOSVRequestsFromDTO(dto []dtos.ComponentDTO) []OSVRequest
 	return osvRequests
 }
 
-func (us OSVUseCase) Execute(dto []dtos.ComponentDTO) dtos.VulnerabilityOutput {
+func (us OSVUseCase) Execute(ctx context.Context, dto []dtos.ComponentDTO) dtos.VulnerabilityOutput {
 	osvRequests := us.getOSVRequestsFromDTO(dto)
-	return us.processRequests(osvRequests)
+	return us.processRequests(ctx, osvRequests)
 }
 
-func (us OSVUseCase) processRequests(requests []OSVRequest) dtos.VulnerabilityOutput {
+func (us OSVUseCase) processRequests(ctx context.Context, requests []OSVRequest) dtos.VulnerabilityOutput {
 	numJobs := len(requests)
 	jobs := make(chan OSVRequest, numJobs)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	results := make(chan dtos.VulnerabilityComponentOutput, numJobs)
 	workers := min(us.MaxAPIWorkers, numJobs)

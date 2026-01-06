@@ -79,7 +79,8 @@ type ServerConfig struct {
 			APIWorkers  int    `env:"VULN_OSV_API_WORKERS"`
 		}
 		SCANOSS struct {
-			Enabled bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
+			Enabled    bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
+			MaxWorkers int  `env:"VULN_SCANOSS_WORKERS"`
 		}
 	}
 }
@@ -124,6 +125,7 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Source.OSV.Enabled = true
 	cfg.Source.OSV.APIWorkers = 5
 	cfg.Source.SCANOSS.Enabled = true
+	cfg.Source.SCANOSS.MaxWorkers = 5
 }
 
 func IsValidConfig(cfg *ServerConfig) error {
