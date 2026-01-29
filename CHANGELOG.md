@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
+## [0.9.0] - 2026/01/29
+### Changed
+- Added support for GitHub PURLs in OSV use case by mapping them to GIT ecosystem with GitHub URLs
+
 ## [0.8.0] - 2026/01/07
 ### Added
 - Included Exploit Prediction Scoring System (EPSS) to vulnerability response
@@ -93,3 +97,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.6.2]: https://github.com/scanoss/vulnerabilities/compare/v0.6.1...v0.6.2
 [0.7.0]: https://github.com/scanoss/vulnerabilities/compare/v0.6.2...v0.7.0
 [0.8.0]: https://github.com/scanoss/vulnerabilities/compare/v0.7.0...v0.8.0
+[0.9.0]: https://github.com/scanoss/vulnerabilities/compare/v0.8.0...v0.9.0
