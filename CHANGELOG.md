@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Upcoming changes...
 
-## [0.9.0] - 2026/01/29
+## [0.9.0] - 2026/02/02
 ### Changed
-- Added support for GitHub PURLs in OSV use case by mapping them to GIT ecosystem with GitHub URLs
+- Added support for GitHub PURLs in OSV use case by mapping them to GIT ecosystem with Git URLs
 - Refactored component version resolution in vulnerability use case to use concurrent worker pool
 - Upgraded `/scanoss/go-models` to `v0.3.0` 
 
