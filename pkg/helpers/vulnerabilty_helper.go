@@ -17,6 +17,7 @@
 package helpers
 
 import (
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
@@ -31,6 +32,16 @@ func convertToVulnerabilityOutput(componentVulnerabilityMap map[string]dtos.Vuln
 			Requirement:     vulnerabilityComponent.Requirement,
 			Version:         vulnerabilityComponent.Version,
 			Vulnerabilities: vulnerabilityComponent.Vulnerabilities,
+		}
+		if len(purlOutput.Vulnerabilities) == 0 {
+			if vulnerabilityComponent.ComponentStatus.Message != "" {
+				purlOutput.ComponentStatus = vulnerabilityComponent.ComponentStatus
+			} else {
+				purlOutput.ComponentStatus = domain.ComponentStatus{
+					Message:    "No vulnerabilities found for " + purlOutput.Purl,
+					StatusCode: domain.ComponentWithoutInfo,
+				}
+			}
 		}
 		output.Components = append(output.Components, purlOutput)
 	}

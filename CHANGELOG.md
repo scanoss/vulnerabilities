@@ -6,8 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Added
 - Upcoming changes...
+
+## [0.10.0] - 2026/02/23
+### Added
+- Included component status (`error_code`, `error_message`) in vulnerability and CPE responses
+- Added `Component` entity with `Status` field for tracking component processing state
+- Added `SanitizeComponents` and `GetComponentsVersion` shared helpers for reuse across vulnerability and CPE use cases
+- Added `HasSemverOperator` utility to detect invalid semver operators in PURL versions
+
+### Changed
+- Refactored component sanitization: invalid PURLs are no longer filtered out but returned with an appropriate status code (`invalid_purl`, `component_without_info`)
+- Moved component version resolution logic from `vulnerability_use_case.go` to shared `helpers/component_helper.go`
+- Updated OSV and local vulnerability use cases to accept `entities.Component` instead of `dtos.ComponentDTO`
+- Simplified adapter functions by removing the valid/invalid component split
+- Upgraded `scanoss/go-grpc-helper` to `v0.12.0`
 
 ## [0.9.0] - 2026/02/02
 ### Changed
@@ -100,3 +113,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.7.0]: https://github.com/scanoss/vulnerabilities/compare/v0.6.2...v0.7.0
 [0.8.0]: https://github.com/scanoss/vulnerabilities/compare/v0.7.0...v0.8.0
 [0.9.0]: https://github.com/scanoss/vulnerabilities/compare/v0.8.0...v0.9.0
+[0.10.0]: https://github.com/scanoss/vulnerabilities/compare/v0.9.0...v0.10.0

@@ -25,6 +25,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	"scanoss.com/vulnerabilities/pkg/entities"
+
 	"github.com/package-url/packageurl-go"
 	"go.uber.org/zap"
 
@@ -131,7 +134,7 @@ func (us OSVUseCase) getRepoURL(purlString string) *string {
 // For git-based packages (GitHub, GitLab, Bitbucket), it constructs a repository URL
 // and sets the ecosystem to "GIT", with the original PURL as a fallback.
 // For all other packages, the PURL is used directly.
-func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []dtos.ComponentDTO) []OSVRequest {
+func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []entities.Component) []OSVRequest {
 	var osvRequests []OSVRequest
 	for _, c := range componentDTOs {
 		osvRequest := OSVRequest{
@@ -163,8 +166,8 @@ func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []dtos.ComponentDTO) []
 	return osvRequests
 }
 
-func (us OSVUseCase) Execute(ctx context.Context, dto []dtos.ComponentDTO) dtos.VulnerabilityOutput {
-	osvRequests := us.getOSVRequestsFromDTO(dto)
+func (us OSVUseCase) Execute(ctx context.Context, components []entities.Component) dtos.VulnerabilityOutput {
+	osvRequests := us.getOSVRequestsFromDTO(components)
 	return us.processRequests(ctx, osvRequests)
 }
 
@@ -208,6 +211,10 @@ func (us OSVUseCase) processRequest(ctx context.Context, jobs chan OSVRequest, r
 				Purl:        j.OriginalPurl,
 				Requirement: j.Requirement,
 				Version:     j.Version,
+				ComponentStatus: domain.ComponentStatus{
+					Message:    "",
+					StatusCode: domain.Success,
+				},
 			}
 			response.Vulnerabilities = us.queryOSV(ctx, j)
 
@@ -222,6 +229,16 @@ func (us OSVUseCase) processRequest(ctx context.Context, jobs chan OSVRequest, r
 				fallbackVulns := us.queryOSV(ctx, fallbackReq)
 				if fallbackVulns != nil {
 					response.Vulnerabilities = fallbackVulns
+				} else {
+					response.ComponentStatus = domain.ComponentStatus{
+						Message:    "No vulnerabilities found for: " + j.OriginalPurl,
+						StatusCode: domain.ComponentWithoutInfo,
+					}
+				}
+			} else if len(response.Vulnerabilities) == 0 {
+				response.ComponentStatus = domain.ComponentStatus{
+					Message:    "No vulnerabilities found for: " + j.OriginalPurl,
+					StatusCode: domain.ComponentWithoutInfo,
 				}
 			}
 			results <- response
