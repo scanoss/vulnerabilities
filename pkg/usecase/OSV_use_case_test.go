@@ -20,11 +20,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	"scanoss.com/vulnerabilities/pkg/entities"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/config"
-	"scanoss.com/vulnerabilities/pkg/dtos"
 )
 
 func TestOSVUseCase(t *testing.T) {
@@ -43,17 +45,26 @@ func TestOSVUseCase(t *testing.T) {
 
 	testCases := []struct {
 		name  string
-		input []dtos.ComponentDTO
+		input []entities.Component
 	}{
 		{
 			name: "OSV Use Case Test",
-			input: []dtos.ComponentDTO{
+			input: []entities.Component{
 				{
 					Purl:        "pkg:pypi/mlflow",
 					Requirement: "2.3.0",
+					Version:     "2.3.0",
+					Status: domain.ComponentStatus{
+						Message:    "",
+						StatusCode: domain.Success,
+					},
 				},
 				{
 					Purl: "pkg:golang/github.com/navidrome/navidrome",
+					Status: domain.ComponentStatus{
+						Message:    "",
+						StatusCode: domain.Success,
+					},
 				},
 			},
 		},

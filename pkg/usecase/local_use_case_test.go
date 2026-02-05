@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"testing"
 
+	"scanoss.com/vulnerabilities/pkg/entities"
+
 	"scanoss.com/vulnerabilities/pkg/config"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
-	"scanoss.com/vulnerabilities/pkg/dtos"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
@@ -59,7 +59,7 @@ func TestGetVulnerabilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
-	components := []dtos.ComponentDTO{
+	components := []entities.Component{
 		{
 			Purl: "pkg:github/tseliot/screen-resolution-extra",
 		},

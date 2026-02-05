@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"scanoss.com/vulnerabilities/pkg/entities"
+
 	"scanoss.com/vulnerabilities/pkg/config"
 
 	"go.uber.org/zap"
@@ -53,7 +55,7 @@ func NewLocalVulnerabilitiesUseCase(ctx context.Context, s *zap.SugaredLogger, c
 // vulnerabilityWorker is a worker goroutine that processes component vulnerability lookups.
 // It reads components from the jobs channel, queries the local database for vulnerabilities,
 // and sends the results to the results channel. The worker terminates when the jobs channel is closed.
-func (d *LocalVulnerabilityUseCase) vulnerabilityWorker(ctx context.Context, jobs chan dtos.ComponentDTO, results chan dtos.VulnerabilityComponentOutput) {
+func (d *LocalVulnerabilityUseCase) vulnerabilityWorker(ctx context.Context, jobs chan entities.Component, results chan dtos.VulnerabilityComponentOutput) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -74,6 +76,7 @@ func (d *LocalVulnerabilityUseCase) vulnerabilityWorker(ctx context.Context, job
 			item.Purl = c.Purl
 			item.Requirement = c.Requirement
 			item.Version = c.Version
+			item.ComponentStatus = c.Status
 			vulnPurls, err := d.vulnsPurl.GetVulnsByPurl(ctx, c.Purl, c.Version)
 			if err != nil {
 				d.s.Errorf("Problem encountered extracting vulnerabilities for: %v - %v.", c, err)
@@ -101,9 +104,9 @@ func (d *LocalVulnerabilityUseCase) vulnerabilityWorker(ctx context.Context, job
 // GetVulnerabilities retrieves vulnerabilities for a list of components from the local database.
 // It spawns a pool of workers (up to MaxWorkers) to process requests concurrently and returns
 // aggregated vulnerability information for all components.
-func (d *LocalVulnerabilityUseCase) GetVulnerabilities(ctx context.Context, components []dtos.ComponentDTO) (dtos.VulnerabilityOutput, error) {
+func (d *LocalVulnerabilityUseCase) GetVulnerabilities(ctx context.Context, components []entities.Component) (dtos.VulnerabilityOutput, error) {
 	numJobs := len(components)
-	jobs := make(chan dtos.ComponentDTO, numJobs)
+	jobs := make(chan entities.Component, numJobs)
 	results := make(chan dtos.VulnerabilityComponentOutput, numJobs)
 	numWorkers := min(d.config.Source.SCANOSS.MaxWorkers, numJobs)
 	for i := 0; i < numWorkers; i++ {

@@ -18,10 +18,14 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	"go.uber.org/zap"
+	"scanoss.com/vulnerabilities/pkg/entities"
+	"scanoss.com/vulnerabilities/pkg/helpers"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/scanoss/go-models/pkg/scanoss"
-	"github.com/scanoss/go-models/pkg/types"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
@@ -34,50 +38,69 @@ type CpeUseCase struct {
 	conn    *sqlx.Conn
 	cpePurl *models.CpePurlModel
 	db      *sqlx.DB
+	config  *myconfig.ServerConfig
+	s       *zap.SugaredLogger
 }
 
 // NewCpe creates a new instance of the vulnerability Use Case.
-func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig, db *sqlx.DB) *CpeUseCase {
-	return &CpeUseCase{ctx: ctx, conn: conn, cpePurl: models.NewCpePurlModel(ctx, conn), db: db}
+func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig, db *sqlx.DB, s *zap.SugaredLogger) *CpeUseCase {
+	return &CpeUseCase{
+		ctx:     ctx,
+		conn:    conn,
+		cpePurl: models.NewCpePurlModel(ctx, conn),
+		db:      db,
+		config:  config,
+		s:       s,
+	}
 }
 
-func (d CpeUseCase) GetCpes(components []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
-	sc := scanoss.New(d.db)
+func (d CpeUseCase) GetCpes(componentDTOs []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
+	components := helpers.SanitizeComponents(componentDTOs)
+	processedComponents := helpers.GetComponentsVersion(d.ctx, d.config, d.s, d.db, components)
+	var validComponents []entities.Component
 	var out []dtos.CpeComponentOutput
-
-	for i, c := range components {
-		if len(c.Purl) == 0 {
-			zlog.S.Infof("Empty Purl string supplied for: %v. Skipping", c)
+	for _, c := range processedComponents {
+		if c.Status.StatusCode == domain.Success {
+			validComponents = append(validComponents, c)
 			continue
 		}
-		// VulnerabilitiesOutput
+		out = append(out, dtos.CpeComponentOutput{
+			Requirement:     c.Requirement,
+			Version:         c.Requirement,
+			Purl:            c.Purl,
+			Cpes:            []string{},
+			ComponentStatus: c.Status,
+		})
+	}
+
+	for _, c := range validComponents {
 		var item dtos.CpeComponentOutput
-		components[i].Version = c.Requirement
 		item.Version = c.Requirement
 		item.Requirement = c.Requirement
 		item.Purl = c.Purl
 		item.Cpes = []string{}
+		item.ComponentStatus = c.Status
 
-		component, err := sc.Component.GetComponent(d.ctx, types.ComponentRequest{Purl: c.Purl, Requirement: c.Requirement})
+		cpePurl, err := d.cpePurl.GetCpeByPurl(c.Purl, c.Version)
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
+			item.ComponentStatus = domain.ComponentStatus{
+				Message:    fmt.Sprintf("Problem encountered extracting CPEs for: %v", c.Purl),
+				StatusCode: domain.ComponentWithoutInfo,
+			}
+			out = append(out, item)
 			continue
 		}
-
-		if component.Version != "" {
-			item.Version = component.Version
-		}
-
-		cpePurl, err := d.cpePurl.GetCpeByPurl(component.Purl, component.Version)
 		for i := range cpePurl {
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}
-		if err != nil {
-			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
-			continue
+		if len(item.Cpes) == 0 {
+			item.ComponentStatus = domain.ComponentStatus{
+				Message:    fmt.Sprintf("No CPEs found for: %v", c.Purl),
+				StatusCode: domain.ComponentWithoutInfo,
+			}
 		}
 		out = append(out, item)
 	}
-
 	return out, nil
 }
