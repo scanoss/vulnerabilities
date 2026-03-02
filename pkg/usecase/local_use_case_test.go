@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"testing"
 
-	"scanoss.com/vulnerabilities/pkg/entities"
+	"github.com/scanoss/go-component-helper/componenthelper"
 
 	"scanoss.com/vulnerabilities/pkg/config"
 
@@ -59,7 +59,7 @@ func TestGetVulnerabilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
-	components := []entities.Component{
+	components := []componenthelper.Component{
 		{
 			Purl: "pkg:github/tseliot/screen-resolution-extra",
 		},

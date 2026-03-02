@@ -25,8 +25,9 @@ import (
 	"net/url"
 	"time"
 
+	compHelper "github.com/scanoss/go-component-helper/componenthelper"
+
 	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
-	"scanoss.com/vulnerabilities/pkg/entities"
 
 	"github.com/package-url/packageurl-go"
 	"go.uber.org/zap"
@@ -134,7 +135,7 @@ func (us OSVUseCase) getRepoURL(purlString string) *string {
 // For git-based packages (GitHub, GitLab, Bitbucket), it constructs a repository URL
 // and sets the ecosystem to "GIT", with the original PURL as a fallback.
 // For all other packages, the PURL is used directly.
-func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []entities.Component) []OSVRequest {
+func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []compHelper.Component) []OSVRequest {
 	var osvRequests []OSVRequest
 	for _, c := range componentDTOs {
 		osvRequest := OSVRequest{
@@ -166,7 +167,7 @@ func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []entities.Component) [
 	return osvRequests
 }
 
-func (us OSVUseCase) Execute(ctx context.Context, components []entities.Component) dtos.VulnerabilityOutput {
+func (us OSVUseCase) Execute(ctx context.Context, components []compHelper.Component) dtos.VulnerabilityOutput {
 	osvRequests := us.getOSVRequestsFromDTO(components)
 	return us.processRequests(ctx, osvRequests)
 }
@@ -304,7 +305,7 @@ func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.Vulnerabil
 			severity = vul.DatabaseSpecific.Severity
 		}
 
-		cvss := []dtos.CVSS{}
+		var cvss []dtos.CVSS
 		if vul.Severity != nil {
 			for _, s := range vul.Severity {
 				cvssResult, err := utils.GetCVSS(s.Score)

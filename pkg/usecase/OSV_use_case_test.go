@@ -20,10 +20,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
-	"scanoss.com/vulnerabilities/pkg/entities"
+	compHelper "github.com/scanoss/go-component-helper/componenthelper"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
 
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/config"
@@ -45,11 +45,11 @@ func TestOSVUseCase(t *testing.T) {
 
 	testCases := []struct {
 		name  string
-		input []entities.Component
+		input []compHelper.Component
 	}{
 		{
 			name: "OSV Use Case Test",
-			input: []entities.Component{
+			input: []compHelper.Component{
 				{
 					Purl:        "pkg:pypi/mlflow",
 					Requirement: "2.3.0",
