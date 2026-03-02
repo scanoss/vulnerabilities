@@ -19,13 +19,14 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
-	"go.uber.org/zap"
-	"scanoss.com/vulnerabilities/pkg/entities"
-	"scanoss.com/vulnerabilities/pkg/helpers"
+	compHelper "github.com/scanoss/go-component-helper/componenthelper"
+	compoHelperUtils "github.com/scanoss/go-component-helper/componenthelper/utils"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	"go.uber.org/zap"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
@@ -54,34 +55,52 @@ func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig,
 	}
 }
 
-func (d CpeUseCase) GetCpes(componentDTOs []dtos.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
-	components := helpers.SanitizeComponents(componentDTOs)
-	processedComponents := helpers.GetComponentsVersion(d.ctx, d.config, d.s, d.db, components)
-	var validComponents []entities.Component
+func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
+	processedComponents := compHelper.GetComponentsVersion(compHelper.ComponentVersionCfg{
+		Ctx:        d.ctx,
+		S:          d.s,
+		DB:         d.db,
+		Input:      componentDTOs,
+		MaxWorkers: d.config.Source.SCANOSS.MaxWorkers,
+	})
+	var validComponents []compHelper.Component
 	var out []dtos.CpeComponentOutput
 	for _, c := range processedComponents {
-		if c.Status.StatusCode == domain.Success {
+		switch c.Status.StatusCode {
+		case domain.ComponentNotFound, domain.VersionNotFound:
+			if !compoHelperUtils.HasSemverOperator(c.Requirement) {
+				c.Version = c.Requirement
+				validComponents = append(validComponents, c)
+			} else {
+				out = append(out, dtos.CpeComponentOutput{
+					Requirement:     c.Requirement,
+					Version:         c.Version,
+					Purl:            c.Purl,
+					Cpes:            []string{},
+					ComponentStatus: c.Status,
+				})
+			}
+		case domain.Success:
 			validComponents = append(validComponents, c)
-			continue
+		case domain.InvalidPurl, domain.ComponentWithoutInfo, domain.InvalidSemver:
+			out = append(out, dtos.CpeComponentOutput{
+				Requirement:     c.Requirement,
+				Version:         c.Version,
+				Purl:            c.Purl,
+				Cpes:            []string{},
+				ComponentStatus: c.Status,
+			})
 		}
-		out = append(out, dtos.CpeComponentOutput{
-			Requirement:     c.Requirement,
-			Version:         c.Requirement,
-			Purl:            c.Purl,
-			Cpes:            []string{},
-			ComponentStatus: c.Status,
-		})
 	}
 
 	for _, c := range validComponents {
 		var item dtos.CpeComponentOutput
-		item.Version = c.Requirement
+		item.Version = c.Version
 		item.Requirement = c.Requirement
 		item.Purl = c.Purl
 		item.Cpes = []string{}
-		item.ComponentStatus = c.Status
 
-		cpePurl, err := d.cpePurl.GetCpeByPurl(c.Purl, c.Version)
+		cpePurl, err := d.cpePurl.GetCpeByPurl(c.Purl, strings.TrimPrefix(c.Version, "v"))
 		if err != nil {
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			item.ComponentStatus = domain.ComponentStatus{
@@ -95,10 +114,21 @@ func (d CpeUseCase) GetCpes(componentDTOs []dtos.ComponentDTO) ([]dtos.CpeCompon
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}
 		if len(item.Cpes) == 0 {
-			item.ComponentStatus = domain.ComponentStatus{
-				Message:    fmt.Sprintf("No CPEs found for: %v", c.Purl),
-				StatusCode: domain.ComponentWithoutInfo,
+			if c.Status.StatusCode == domain.VersionNotFound || c.Status.StatusCode == domain.ComponentNotFound {
+				item.ComponentStatus = c.Status
+			} else {
+				item.ComponentStatus = domain.ComponentStatus{
+					Message:    fmt.Sprintf("No CPEs found for: %v", c.Purl),
+					StatusCode: domain.ComponentWithoutInfo,
+				}
 			}
+			out = append(out, item)
+			continue
+		}
+
+		item.ComponentStatus = domain.ComponentStatus{
+			Message:    "",
+			StatusCode: domain.Success,
 		}
 		out = append(out, item)
 	}

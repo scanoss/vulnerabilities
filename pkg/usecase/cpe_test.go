@@ -21,13 +21,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/scanoss/go-component-helper/componenthelper"
+
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
-	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
@@ -53,7 +54,7 @@ func TestGetCpeUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when loading test data", err)
 	}
-	var components = []dtos.ComponentDTO{
+	var components = []componenthelper.ComponentDTO{
 		{
 			Purl: "pkg:github/tseliot/screen-resolution-extra",
 		},

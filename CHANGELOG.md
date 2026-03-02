@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
+## [0.11.0] - 2026/03/02
+### Added
+- Added `lint_docker_fix` Makefile target for auto-fixing linting issues via Docker
+- Added new `go-component-helper` dependency for shared component handling logic
+### Changed
+- Extracted `SanitizeComponents` and `GetComponentsVersion` to external `go-component-helper` library, removing local `pkg/helpers/component_helper.go`
+- Replaced `dtos.ComponentDTO` and `entities.Component` with `compHelper.ComponentDTO` and `compHelper.Component` across adapters, service, and use cases
+- Improved component status classification in vulnerability use case using exhaustive switch with explicit handling for `ComponentNotFound`, `VersionNotFound`, `InvalidPurl`, `ComponentWithoutInfo`, and `InvalidSemver`
+- Components with `ComponentNotFound`/`VersionNotFound` status now fall back to requirement as version when no semver operator is present
+- Upgraded `scanoss/go-grpc-helper` to `v0.13.0`
+- Upgraded `scanoss/go-models` to `v0.5.1`
+- Upgraded `scanoss/papi` to `v0.30.0`
+
 ## [0.10.0] - 2026/02/23
 ### Added
 - Included component status (`error_code`, `error_message`) in vulnerability and CPE responses
@@ -114,3 +127,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.8.0]: https://github.com/scanoss/vulnerabilities/compare/v0.7.0...v0.8.0
 [0.9.0]: https://github.com/scanoss/vulnerabilities/compare/v0.8.0...v0.9.0
 [0.10.0]: https://github.com/scanoss/vulnerabilities/compare/v0.9.0...v0.10.0
+[0.11.0]: https://github.com/scanoss/vulnerabilities/compare/v0.10.0...v0.11.0

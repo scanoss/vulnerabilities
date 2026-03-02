@@ -143,7 +143,7 @@ func FilterCpesByRequirement(cpes []CpePurl, purlReq string) []CpePurl {
 		}
 	}
 	zlog.S.Debugf("Filtering cpes by requirement...")
-	output := []CpePurl{}
+	output := make([]CpePurl, 0)
 	for _, cpe := range cpes {
 		if len(cpe.SemVer) > 0 || len(cpe.Version) > 0 {
 			v, err := semver.NewVersion(cpe.Version)

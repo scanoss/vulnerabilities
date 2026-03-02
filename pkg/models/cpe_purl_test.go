@@ -287,7 +287,8 @@ func TestFilterCpesByRequirement(t *testing.T) {
 				{Cpe: "cpe:2.3:o:zyxel:zywall_atp200_firmware:4.35:*:*:*:*:*:*:*", Version: "4.35", SemVer: "4.35.0"},
 				{Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"}},
 			want: []CpePurl{{Cpe: "cpe:2.3:a:apache:org.apache.sling.servlets.post:2.2.0:*:*:*:*:*:*:*", Version: "2.2.0", SemVer: "2.2.0"}},
-		}, {
+		},
+		{
 			name: "Requirement not matching the cpe list returns empty results",
 			req:  "=8.0.0",
 			cpes: []CpePurl{
@@ -296,7 +297,8 @@ func TestFilterCpesByRequirement(t *testing.T) {
 				{Cpe: "cpe:2.3:a:101_project:101:0.15.0:*:*:*:*:node.js:*:*", Version: "0.15.0", SemVer: "0.15.0"},
 			},
 			want: []CpePurl{},
-		}, {
+		},
+		{
 			name: "Empty cpes return empty results",
 			cpes: []CpePurl{},
 			want: []CpePurl{},
