@@ -38,19 +38,14 @@ func TestVersionsSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseDB(db)
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/versions.sql"})
+	err = loadTestSQLDataFiles(db, ctx, nil, []string{"../models/tests/versions.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
-	versionModel := NewVersionModel(ctx, conn)
+	versionModel := NewVersionModel(db)
 	var name = "1.0.0"
 	fmt.Printf("Searching for version: %v\n", name)
-	version, err := versionModel.GetVersionByName(name, false)
+	version, err := versionModel.GetVersionByName(ctx, name, false)
 	if err != nil {
 		t.Errorf("versions.GetVersionByName() error = %v", err)
 	}
@@ -61,7 +56,7 @@ func TestVersionsSearch(t *testing.T) {
 
 	name = ""
 	fmt.Printf("Searching for license: %v\n", name)
-	_, err = versionModel.GetVersionByName(name, false)
+	_, err = versionModel.GetVersionByName(ctx, name, false)
 	if err == nil {
 		t.Errorf("versions.GetVersionByName() error = did not get an error")
 	} else {
@@ -69,7 +64,7 @@ func TestVersionsSearch(t *testing.T) {
 	}
 	name = ""
 	fmt.Printf("Saving for license: %v\n", name)
-	_, err = versionModel.saveVersion(name)
+	_, err = versionModel.saveVersion(ctx, name)
 	if err == nil {
 		t.Errorf("versions.saveVersion() error = did not get an error")
 	} else {
@@ -78,7 +73,7 @@ func TestVersionsSearch(t *testing.T) {
 
 	name = "22.22.22"
 	fmt.Printf("Searching for version: %v\n", name)
-	version, err = versionModel.GetVersionByName(name, true)
+	version, err = versionModel.GetVersionByName(ctx, name, true)
 	if err != nil {
 		t.Errorf("versions.GetVersionByName() error = %v", err)
 	}
@@ -89,7 +84,7 @@ func TestVersionsSearch(t *testing.T) {
 
 	name = "22.22.22"
 	fmt.Printf("Searching for version: %v\n", name)
-	version, err = versionModel.saveVersion(name)
+	version, err = versionModel.saveVersion(ctx, name)
 	if err != nil {
 		t.Errorf("versions.GetVersionByName() error = %v", err)
 	}
@@ -116,14 +111,14 @@ func TestVersionsSearchBadSql(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	versionModel := NewVersionModel(ctx, conn)
-	_, err = versionModel.GetVersionByName("rubbish", false)
+	versionModel := NewVersionModel(db)
+	_, err = versionModel.GetVersionByName(ctx, "rubbish", false)
 	if err == nil {
 		t.Errorf("versions.GetVersionByName() error = did not get an error")
 	} else {
 		fmt.Printf("Got expected error = %v\n", err)
 	}
-	_, err = versionModel.saveVersion("rubbish")
+	_, err = versionModel.saveVersion(ctx, "rubbish")
 	if err == nil {
 		t.Errorf("versions.saveVersion() error = did not get an error")
 	} else {

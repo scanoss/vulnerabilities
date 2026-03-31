@@ -50,7 +50,7 @@ func TestGetVulnsByPurl(t *testing.T) {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewVulnsForPurlModel(ctx, conn)
+	cpeModel := NewVulnsForPurlModel(db)
 
 	type inputGetVulnsForPurl struct {
 		purl        string
@@ -75,7 +75,7 @@ func TestGetVulnsByPurl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cpeModel.GetVulnsByPurl(tt.input.purl, tt.input.requirement)
+			got, err := cpeModel.GetVulnsByPurl(ctx, tt.input.purl, tt.input.requirement)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("cpeModel.GetCpeByPurl() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -102,26 +102,14 @@ func TestGetVulnsByPurlName(t *testing.T) {
 	}
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
-
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, nil)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewVulnsForPurlModel(ctx, conn)
+	cpeModel := NewVulnsForPurlModel(db)
 
-	_, err = cpeModel.GetVulnsByPurlName("")
-	if err == nil {
-		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlName()")
-	}
-
-	CloseConn(conn)
-	_, err = cpeModel.GetVulnsByPurlName("pkg:github/hapijs/call")
+	_, err = cpeModel.GetVulnsByPurlName(ctx, "")
 	if err == nil {
 		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlName()")
 	}
@@ -151,15 +139,15 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewVulnsForPurlModel(ctx, conn)
+	cpeModel := NewVulnsForPurlModel(db)
 
-	_, err = cpeModel.GetVulnsByPurlVersion("", "")
+	_, err = cpeModel.GetVulnsByPurlVersion(ctx, "", "")
 	if err == nil {
 		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlVersion()")
 	}
 
 	CloseConn(conn)
-	_, err = cpeModel.GetVulnsByPurlVersion("pkg:github/hapijs/call", "1.0.0")
+	_, err = cpeModel.GetVulnsByPurlVersion(ctx, "pkg:github/hapijs/call", "1.0.0")
 	if err == nil {
 		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlVersion()")
 	}

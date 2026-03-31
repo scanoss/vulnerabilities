@@ -30,8 +30,7 @@ import (
 )
 
 type VersionModel struct {
-	ctx  context.Context
-	conn *sqlx.Conn
+	db *sqlx.DB
 }
 
 type Version struct {
@@ -48,18 +47,18 @@ type PurlVersion struct {
 // TODO add cache for versions already searched for?
 
 // NewVersionModel creates a new instance of the Version Model.
-func NewVersionModel(ctx context.Context, conn *sqlx.Conn) *VersionModel {
-	return &VersionModel{ctx: ctx, conn: conn}
+func NewVersionModel(db *sqlx.DB) *VersionModel {
+	return &VersionModel{db: db}
 }
 
 // GetVersionByName gets the given version from the versions table.
-func (m *VersionModel) GetVersionByName(name string, create bool) (Version, error) {
+func (m *VersionModel) GetVersionByName(ctx context.Context, name string, create bool) (Version, error) {
 	if len(name) == 0 {
 		zlog.S.Error("Please specify a valid Version Name to query")
 		return Version{}, errors.New("please specify a valid Version Name to query")
 	}
 	var version Version
-	err := m.conn.QueryRowxContext(m.ctx,
+	err := m.db.QueryRowxContext(ctx,
 		"SELECT id, version_name, semver FROM versions"+
 			" WHERE version_name = $1",
 		name).StructScan(&version)
@@ -68,28 +67,28 @@ func (m *VersionModel) GetVersionByName(name string, create bool) (Version, erro
 		return Version{}, fmt.Errorf("failed to query the versions table: %v", err)
 	}
 	if create && len(version.VersionName) == 0 { // No version found and requested to create an entry
-		return m.saveVersion(name)
+		return m.saveVersion(ctx, name)
 	}
 
 	return version, nil
 }
 
 // saveVersion writes the given version name to the versions table.
-func (m *VersionModel) saveVersion(name string) (Version, error) {
+func (m *VersionModel) saveVersion(ctx context.Context, name string) (Version, error) {
 	if len(name) == 0 {
 		zlog.S.Error("Please specify a valid version Name to save")
 		return Version{}, errors.New("please specify a valid Version Name to save")
 	}
 	zlog.S.Debugf("Attempting to save '%v' to the versions table...", name)
 	var version Version
-	err := m.conn.QueryRowxContext(m.ctx,
+	err := m.db.QueryRowxContext(ctx,
 		"INSERT INTO versions (version_name, semver) VALUES($1, $2)"+
 			" RETURNING id, version_name, semver",
 		name, "", false, false,
 	).StructScan(&version)
 	if err != nil {
 		zlog.S.Errorf("Error: Failed to insert new version name into versions table for %v: %v", name, err)
-		return m.GetVersionByName(name, false) // Search one more time for it, just in case someone else added it
+		return m.GetVersionByName(ctx, name, false) // Search one more time for it, just in case someone else added it
 	}
 	return version, nil
 }

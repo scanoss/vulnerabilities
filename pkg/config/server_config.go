@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	defaultGrpcPort = "50051"
-	defaultRestPort = "40051"
+	defaultGrpcPort = "50052"
+	defaultRestPort = "40052"
 )
 
 // ServerConfig is configuration for Server.
@@ -76,9 +76,11 @@ type ServerConfig struct {
 			APIBaseURL  string `env:"VULN_OSV_API_BASE_URL"`
 			InfoBaseURL string `env:"VULN_OSV_INFO_BASE_URL"`
 			Enabled     bool   `env:"VULN_OSV_SOURCE_ENABLED"`
+			APIWorkers  int    `env:"VULN_OSV_API_WORKERS"`
 		}
 		SCANOSS struct {
-			Enabled bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
+			Enabled    bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
+			MaxWorkers int  `env:"VULN_SCANOSS_WORKERS"`
 		}
 	}
 }
@@ -114,14 +116,16 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Database.SslMode = "disable"
 	cfg.Database.Trace = false
 	cfg.Logging.DynamicLogging = true
-	cfg.Logging.DynamicPort = "localhost:60054"
+	cfg.Logging.DynamicPort = "localhost:60052"
 	cfg.Telemetry.Enabled = false
 	cfg.Telemetry.OltpExporter = "0.0.0.0:4317" // Default OTEL OLTP gRPC Exporter endpoint
 	cfg.Components.CommitMissing = false
 	cfg.Source.OSV.APIBaseURL = "https://api.osv.dev/v1"
 	cfg.Source.OSV.InfoBaseURL = "https://osv.dev/vulnerability"
 	cfg.Source.OSV.Enabled = true
+	cfg.Source.OSV.APIWorkers = 5
 	cfg.Source.SCANOSS.Enabled = true
+	cfg.Source.SCANOSS.MaxWorkers = 5
 }
 
 func IsValidConfig(cfg *ServerConfig) error {

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	purlhelper "github.com/scanoss/go-purl-helper/pkg"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"github.com/jmoiron/sqlx"
@@ -29,8 +30,7 @@ import (
 )
 
 type VulnsForPurlModel struct {
-	ctx  context.Context
-	conn *sqlx.Conn
+	db *sqlx.DB
 }
 
 type VulnsForPurl struct {
@@ -47,19 +47,19 @@ type OnlyPurl struct {
 }
 
 // NewVulnsForPurlModel creates a new instance of the CPE Purl Model.
-func NewVulnsForPurlModel(ctx context.Context, conn *sqlx.Conn) *VulnsForPurlModel {
-	return &VulnsForPurlModel{ctx: ctx, conn: conn}
+func NewVulnsForPurlModel(db *sqlx.DB) *VulnsForPurlModel {
+	return &VulnsForPurlModel{db: db}
 }
 
 // GetVulnsByPurl gets vulnerabilities by purl.
-func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurl(ctx context.Context, purl string, version string) ([]VulnsForPurl, error) {
 	if len(purl) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl String to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl String to query")
 	}
 
 	// used to valid the PURL
-	_, err := utils.PurlFromString(purl)
+	_, err := purlhelper.PurlFromString(purl)
 	if err != nil {
 		return []VulnsForPurl{}, err
 	}
@@ -67,13 +67,13 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(purl string, version string) ([]Vulns
 	purlName := utils.PurlRemoveFromVersionComponent(purl) // Remove everything after the component name
 
 	if len(version) > 0 {
-		return m.GetVulnsByPurlVersion(purlName, version)
+		return m.GetVulnsByPurlVersion(ctx, purlName, version)
 	}
-	return m.GetVulnsByPurlName(purlName)
+	return m.GetVulnsByPurlName(ctx, purlName)
 }
 
 // GetVulnsByPurlName searches for component details of the specified Purl Name/Type (and optional requirement).
-func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlName(ctx context.Context, purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
@@ -81,7 +81,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
-	err := m.conn.SelectContext(m.ctx, &vulns,
+	err := m.db.SelectContext(ctx, &vulns,
 		"SELECT c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
 			"FROM short_cpe_purl scp "+
 			"INNER JOIN cpes c ON scp.cpe_id = c.id "+
@@ -100,7 +100,7 @@ func (m *VulnsForPurlModel) GetVulnsByPurlName(purlName string) ([]VulnsForPurl,
 	return vulns, nil
 }
 
-func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion string) ([]VulnsForPurl, error) {
+func (m *VulnsForPurlModel) GetVulnsByPurlVersion(ctx context.Context, purlName string, purlVersion string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
@@ -108,38 +108,40 @@ func (m *VulnsForPurlModel) GetVulnsByPurlVersion(purlName string, purlVersion s
 
 	var vulns []VulnsForPurl
 	purlName = strings.TrimSpace(purlName)
-	err := m.conn.SelectContext(m.ctx, &vulns,
-		"select distinct c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
-			"from "+
-			"short_cpe_purl scp, "+
-			"short_cpes sc, "+
-			"cves c2 "+
-			"inner join nvd_match_criteria_ids nmci "+
-			"on "+
-			"nmci.match_criteria_id = any(c2.match_criteria_ids) "+
-			"where "+
-			"scp.purl = $1 "+
-			"and ($2 = nmci.version_start_including or $2 = nmci.version_end_including "+
-			"or "+
-			"( "+
-			"( "+
-			"(nmci.version_start_excluding = '' and nmci.version_start_including = '') "+
-			"or "+
-			"(nmci.version_start_excluding != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20)) "+
-			"or "+
-			"(nmci.version_start_including != '' and natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20)) "+
-			") and "+
-			"( "+
-			"(nmci.version_end_excluding = '' and nmci.version_end_including = '') "+
-			"or "+
-			"(nmci.version_end_excluding != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))"+
-			"or "+
-			"(nmci.version_end_including != '' and natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20)) "+
-			")"+
-			")"+
-			")"+
-			"and scp.cpe_id = sc.id "+
-			"and sc.id = nmci.short_cpe_id;", purlName, purlVersion)
+	query := `WITH matching_criteria AS (
+	  SELECT array_agg(nmci.match_criteria_id) as criteria_ids
+	  FROM short_cpe_purl scp
+	  INNER JOIN short_cpes sc ON sc.id = scp.cpe_id
+	  INNER JOIN nvd_match_criteria_ids nmci ON nmci.short_cpe_id = sc.id
+	  WHERE scp.purl = $1
+		AND (
+			$2 = nmci.version_start_including
+			OR $2 = nmci.version_end_including
+			OR (
+				(
+					(nmci.version_start_excluding = '' AND nmci.version_start_including = '')
+					OR (nmci.version_start_excluding != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20))
+					OR (nmci.version_start_including != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20))
+				)
+				AND (
+					(nmci.version_end_excluding = '' AND nmci.version_end_including = '')
+					OR (nmci.version_end_excluding != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))
+					OR (nmci.version_end_including != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20))
+				)
+			)
+		)
+	)
+	SELECT DISTINCT
+		c2.cve,
+		c2.severity,
+		c2.published,
+		c2.modified,
+		c2.summary
+	FROM cves c2, matching_criteria mc
+	WHERE c2.match_criteria_ids && mc.criteria_ids
+	ORDER BY c2.cve, c2.severity, c2.published, c2.modified, c2.summary;`
+
+	err := m.db.SelectContext(ctx, &vulns, query, purlName, purlVersion)
 
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)

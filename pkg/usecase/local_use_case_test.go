@@ -21,22 +21,26 @@ import (
 	"fmt"
 	"testing"
 
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
-	myconfig "scanoss.com/vulnerabilities/pkg/config"
-	"scanoss.com/vulnerabilities/pkg/dtos"
+	"github.com/scanoss/go-component-helper/componenthelper"
+
+	"scanoss.com/vulnerabilities/pkg/config"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"scanoss.com/vulnerabilities/pkg/models"
 )
 
 func TestGetVulnerabilityUseCase(t *testing.T) {
-	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
+	ctx := ctxzap.ToContext(context.Background(), zlog.L)
+	s := ctxzap.Extract(ctx).Sugar()
 	db, err := sqlx.Connect("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -51,7 +55,11 @@ func TestGetVulnerabilityUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%v' was not expected when loading test data", err)
 	}
-	components := []dtos.ComponentDTO{
+	serverConfig, err := config.NewServerConfig(nil)
+	if err != nil {
+		t.Fatalf("failed to load Config: %v", err)
+	}
+	components := []componenthelper.Component{
 		{
 			Purl: "pkg:github/tseliot/screen-resolution-extra",
 		},
@@ -62,12 +70,8 @@ func TestGetVulnerabilityUseCase(t *testing.T) {
 			Purl: "pkg:github/candlepin/candlepin",
 		},
 	}
-	myConfig, err := myconfig.NewServerConfig(nil)
-	if err != nil {
-		t.Fatalf("failed to load Config: %v", err)
-	}
-	vulnUc := NewLocalVulnerabilitiesUseCase(ctx, conn, myConfig)
-	vulns, err := vulnUc.GetVulnerabilities(components)
+	vulnUc := NewLocalVulnerabilitiesUseCase(ctx, s, serverConfig, db)
+	vulns, err := vulnUc.GetVulnerabilities(ctx, components)
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when getting vulnerabilities", err)
 	}

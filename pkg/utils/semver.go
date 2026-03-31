@@ -25,3 +25,7 @@ var operatorRegex = regexp.MustCompile(`^(>=|<=|~|v|>|<)`)
 func StripSemverOperator(version string) string {
 	return operatorRegex.ReplaceAllString(version, "")
 }
+
+func HasSemverOperator(version string) bool {
+	return operatorRegex.MatchString(version)
+}

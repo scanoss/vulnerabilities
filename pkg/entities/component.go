@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2018-2025 SCANOSS.COM
+ * Copyright (C) 2018-2026 SCANOSS.COM
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,17 +14,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package utils
+package entities
 
-import (
-	"regexp"
-)
+import "github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
 
-// regex to extract version from requirement field.
-var fromVRegex = regexp.MustCompile(`(@|\?|#).+`)
-
-// PurlRemoveFromVersionComponent From a purlString removes everything that proceds @.
-// See purl specs scheme:type/namespace/name@version?qualifiers#subpath.
-func PurlRemoveFromVersionComponent(purlString string) string {
-	return fromVRegex.ReplaceAllString(purlString, "")
+type Component struct {
+	Purl        string `json:"purl"`
+	Requirement string `json:"requirement,omitempty"`
+	Version     string `json:"version,omitempty"`
+	Status      domain.ComponentStatus
 }
