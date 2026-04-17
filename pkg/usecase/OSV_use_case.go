@@ -233,13 +233,13 @@ func (us OSVUseCase) processRequest(ctx context.Context, jobs chan OSVRequest, r
 				} else {
 					response.ComponentStatus = domain.ComponentStatus{
 						Message:    "No vulnerabilities found for: " + j.OriginalPurl,
-						StatusCode: domain.ComponentWithoutInfo,
+						StatusCode: domain.NoInfo,
 					}
 				}
 			} else if len(response.Vulnerabilities) == 0 {
 				response.ComponentStatus = domain.ComponentStatus{
 					Message:    "No vulnerabilities found for: " + j.OriginalPurl,
-					StatusCode: domain.ComponentWithoutInfo,
+					StatusCode: domain.NoInfo,
 				}
 			}
 			results <- response

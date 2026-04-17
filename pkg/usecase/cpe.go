@@ -82,7 +82,7 @@ func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.Cpe
 			}
 		case domain.Success:
 			validComponents = append(validComponents, c)
-		case domain.InvalidPurl, domain.ComponentWithoutInfo, domain.InvalidSemver:
+		case domain.InvalidPurl, domain.NoInfo, domain.InvalidSemver:
 			out = append(out, dtos.CpeComponentOutput{
 				Requirement:     c.Requirement,
 				Version:         c.Version,
@@ -105,7 +105,7 @@ func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.Cpe
 			zlog.S.Errorf("Problem encountered extracting CPEs for: %v - %v.", c, err)
 			item.ComponentStatus = domain.ComponentStatus{
 				Message:    fmt.Sprintf("Problem encountered extracting CPEs for: %v", c.Purl),
-				StatusCode: domain.ComponentWithoutInfo,
+				StatusCode: domain.NoInfo,
 			}
 			out = append(out, item)
 			continue
@@ -119,7 +119,7 @@ func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.Cpe
 			} else {
 				item.ComponentStatus = domain.ComponentStatus{
 					Message:    fmt.Sprintf("No CPEs found for: %v", c.Purl),
-					StatusCode: domain.ComponentWithoutInfo,
+					StatusCode: domain.NoInfo,
 				}
 			}
 			out = append(out, item)
