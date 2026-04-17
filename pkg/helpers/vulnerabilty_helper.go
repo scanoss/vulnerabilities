@@ -32,6 +32,7 @@ func convertToVulnerabilityOutput(componentVulnerabilityMap map[string]dtos.Vuln
 			Requirement:     vulnerabilityComponent.Requirement,
 			Version:         vulnerabilityComponent.Version,
 			Vulnerabilities: vulnerabilityComponent.Vulnerabilities,
+			ComponentStatus: vulnerabilityComponent.ComponentStatus,
 		}
 		if len(purlOutput.Vulnerabilities) == 0 {
 			if vulnerabilityComponent.ComponentStatus.Message != "" {
@@ -39,7 +40,7 @@ func convertToVulnerabilityOutput(componentVulnerabilityMap map[string]dtos.Vuln
 			} else {
 				purlOutput.ComponentStatus = domain.ComponentStatus{
 					Message:    "No vulnerabilities found for " + purlOutput.Purl,
-					StatusCode: domain.ComponentWithoutInfo,
+					StatusCode: domain.NoInfo,
 				}
 			}
 		}

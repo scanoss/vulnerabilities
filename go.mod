@@ -13,9 +13,8 @@ require (
 	github.com/pandatix/go-cvss v0.6.2
 	github.com/scanoss/go-component-helper v0.6.0
 	github.com/scanoss/go-grpc-helper v0.15.1
-	github.com/scanoss/go-models v0.8.0
 	github.com/scanoss/go-purl-helper v0.3.0
-	github.com/scanoss/papi v0.35.0
+	github.com/scanoss/papi v0.40.0
 	github.com/scanoss/zap-logging-helper v0.4.0
 	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.80.0
@@ -39,6 +38,7 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/phuslu/iploc v1.0.20230201 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/scanoss/go-models v0.8.0 // indirect
 	github.com/scanoss/ipfilter/v2 v2.0.2 // indirect
 	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -53,7 +53,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
