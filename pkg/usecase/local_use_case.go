@@ -21,13 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	compHelper "github.com/scanoss/go-component-helper/componenthelper"
-
-	"scanoss.com/vulnerabilities/pkg/config"
-
-	"go.uber.org/zap"
-
 	"github.com/jmoiron/sqlx"
+	compHelper "github.com/scanoss/go-component-helper/componenthelper"
+	"go.uber.org/zap"
+	"scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
 )

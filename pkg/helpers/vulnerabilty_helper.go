@@ -14,6 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Package helpers provides shared utilities used by the vulnerabilities service.
 package helpers
 
 import (
