@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
+### Changed
+- Updated dependencies to the latest versions
+
 ## [0.11.0] - 2026/03/02
 ### Added
 - Added `lint_docker_fix` Makefile target for auto-fixing linting issues via Docker

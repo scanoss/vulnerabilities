@@ -1,27 +1,25 @@
 module scanoss.com/vulnerabilities
 
-go 1.24.0
-
-toolchain go1.24.6
+go 1.25.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/golobby/config/v3 v3.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.11.2
-	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/package-url/packageurl-go v0.1.3
+	github.com/lib/pq v1.12.3
+	github.com/mattn/go-sqlite3 v1.14.42
+	github.com/package-url/packageurl-go v0.1.5
 	github.com/pandatix/go-cvss v0.6.2
-	github.com/scanoss/go-component-helper v0.1.0
-	github.com/scanoss/go-grpc-helper v0.13.0
-	github.com/scanoss/go-models v0.5.1
-	github.com/scanoss/go-purl-helper v0.2.1
-	github.com/scanoss/papi v0.30.0
+	github.com/scanoss/go-component-helper v0.6.0
+	github.com/scanoss/go-grpc-helper v0.15.1
+	github.com/scanoss/go-models v0.8.0
+	github.com/scanoss/go-purl-helper v0.3.0
+	github.com/scanoss/papi v0.35.0
 	github.com/scanoss/zap-logging-helper v0.4.0
 	go.uber.org/zap v1.27.1
-	google.golang.org/grpc v1.79.1
-	modernc.org/sqlite v1.46.1
+	google.golang.org/grpc v1.80.0
+	modernc.org/sqlite v1.48.2
 )
 
 require (
@@ -57,13 +55,13 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.67.6 // indirect
+	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
