@@ -21,17 +21,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	compHelper "github.com/scanoss/go-component-helper/componenthelper"
 	compoHelperUtils "github.com/scanoss/go-component-helper/componenthelper/utils"
-
-	"github.com/jmoiron/sqlx"
 	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"go.uber.org/zap"
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
-
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 type CpeUseCase struct {
@@ -66,7 +64,7 @@ func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.Cpe
 	var validComponents []compHelper.Component
 	var out []dtos.CpeComponentOutput
 	for _, c := range processedComponents {
-		switch c.Status.StatusCode {
+		switch c.Status.StatusCode { //nolint:exhaustive // deprecated codes and unrelated codes intentionally omitted
 		case domain.ComponentNotFound, domain.VersionNotFound:
 			if !compoHelperUtils.HasSemverOperator(c.Requirement) {
 				c.Version = c.Requirement

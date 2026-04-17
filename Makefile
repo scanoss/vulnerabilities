@@ -1,3 +1,7 @@
+## Constants
+# Linter version
+LINTER_VERSION := v2.10.1
+
 #vars
 IMAGE_NAME=scanoss-vulnerabilities
 REPO=scanoss
@@ -44,10 +48,10 @@ lint_local_fix: ## Run local instance of linting across the code base including 
 	golangci-lint run --fix ./pkg/... ./cmd/...
 
 lint_docker: ## Run docker instance of linting across the code base
-	docker run --rm -v $(PWD):/app -v ~/.cache/golangci-lint/v1.64.8:/root/.cache -w /app golangci/golangci-lint:v1.64.8 golangci-lint run ./pkg/... ./cmd/...
+	docker run --rm -v $(PWD):/app -v ~/.cache/golangci-lint/$(LINTER_VERSION):/root/.cache -w /app golangci/golangci-lint:$(LINTER_VERSION) golangci-lint run ./pkg/... ./cmd/...
 
 lint_docker_fix: ## Run docker instance of linting across the code base including auto-fixing
-	docker run --rm -v $(PWD):/app -v ~/.cache/golangci-lint/v1.64.8:/root/.cache -w /app golangci/golangci-lint:v1.64.8 golangci-lint run --fix ./pkg/... ./cmd/...
+	docker run --rm -v $(PWD):/app -v ~/.cache/golangci-lint/$(LINTER_VERSION):/root/.cache -w /app golangci/golangci-lint:$(LINTER_VERSION) golangci-lint run --fix ./pkg/... ./cmd/...
 
 run_local:  ## Launch the API locally for test
 	@echo "Launching API locally..."

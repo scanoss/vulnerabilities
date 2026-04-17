@@ -14,6 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Package dtos defines the data transfer objects used across the vulnerabilities service.
 package dtos
 
 type ComponentDTO struct {

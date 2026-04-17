@@ -3,13 +3,10 @@ package models
 import (
 	"context"
 
-	"go.uber.org/zap"
-
-	"scanoss.com/vulnerabilities/pkg/config"
-
 	"github.com/jmoiron/sqlx"
-
 	scdb "github.com/scanoss/go-grpc-helper/pkg/grpc/database"
+	"go.uber.org/zap"
+	"scanoss.com/vulnerabilities/pkg/config"
 )
 
 type EPSSModel struct {

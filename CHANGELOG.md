@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated dependencies to the latest versions
 - Replace `error_message/error_code` by `info_message/info_code`
+- Updated `linter` to `v2.10.1`
 
 ## [0.11.0] - 2026/03/02
 ### Added

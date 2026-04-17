@@ -14,6 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Package usecase implements the vulnerabilities service business logic.
 package usecase
 
 import (
@@ -25,19 +26,14 @@ import (
 	"net/url"
 	"time"
 
-	compHelper "github.com/scanoss/go-component-helper/componenthelper"
-
-	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
-
 	"github.com/package-url/packageurl-go"
+	compHelper "github.com/scanoss/go-component-helper/componenthelper"
+	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"go.uber.org/zap"
-
 	"scanoss.com/vulnerabilities/pkg/config"
-
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/utils"
-
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 )
 
 type OSVPackageRequest struct {
@@ -125,8 +121,8 @@ func (us OSVUseCase) getRepoURL(purlString string) *string {
 	host, hostFound := gitHosts[purl.Type]
 	namespace := purl.Namespace
 	if hostFound {
-		repoURL := fmt.Sprintf("%s/%s/%s", host, namespace, purl.Name)
-		return &repoURL
+		built := fmt.Sprintf("%s/%s/%s", host, namespace, purl.Name)
+		return &built
 	}
 	return nil
 }
@@ -275,11 +271,17 @@ func (us OSVUseCase) queryOSV(ctx context.Context, r OSVRequest) []dtos.Vulnerab
 		us.s.Errorf("HTTP request failed: %s", err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			us.s.Warnf("Failed to close response body: %s", closeErr)
+		}
+	}()
+
 	if resp.StatusCode != http.StatusOK {
 		us.s.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
 		return nil
 	}
+
 	var osvResponse dtos.OSVResponseDTO
 	err = json.NewDecoder(resp.Body).Decode(&osvResponse)
 	if err != nil {

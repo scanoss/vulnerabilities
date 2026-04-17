@@ -14,6 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Package utils provides shared helper functions used across the vulnerabilities service.
 package utils
 
 import (

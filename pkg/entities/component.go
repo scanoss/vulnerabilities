@@ -14,6 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Package entities defines the core domain entities shared across the vulnerabilities service.
 package entities
 
 import "github.com/scanoss/go-grpc-helper/pkg/grpc/domain"

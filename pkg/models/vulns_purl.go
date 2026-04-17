@@ -22,10 +22,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	purlhelper "github.com/scanoss/go-purl-helper/pkg"
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
-
-	"github.com/jmoiron/sqlx"
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
 
