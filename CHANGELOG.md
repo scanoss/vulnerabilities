@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
+## [0.13.0] - 2026-06-22
+### Added
+- `/health` liveness endpoint (GET) on the REST gateway
+### Changed
+- Upgraded `scanoss/go-grpc-helper` to `v0.16.0`
+
 ## [0.12.0] - 2026/04/17
 ### Changed
 - Updated dependencies to the latest versions
@@ -135,3 +141,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.10.0]: https://github.com/scanoss/vulnerabilities/compare/v0.9.0...v0.10.0
 [0.11.0]: https://github.com/scanoss/vulnerabilities/compare/v0.10.0...v0.11.0
 [0.12.0]: https://github.com/scanoss/vulnerabilities/compare/v0.11.0...v0.12.0
+[0.13.0]: https://github.com/scanoss/vulnerabilities/compare/v0.12.0...v0.13.0
