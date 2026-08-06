@@ -113,17 +113,18 @@ func TestComparePostgres(t *testing.T) {
 	}
 
 	purls := []string{"pkg:apache/ant", "pkg:apache/arrow", "pkg:anuko/time-tracker", "pkg:apache/allura"}
+	comparisons := 0
 
 	fmt.Println("\n########## variant WITHOUT version ##########")
 	for _, purl := range purls {
 		var oldCves []string
 		if err := db.SelectContext(ctx, &oldCves, oldNameQuery, purl); err != nil {
-			fmt.Printf("  %-28s OLD ERROR: %v\n", purl, err)
+			t.Errorf("%s: original query failed, parity cannot be checked: %v", purl, err)
 			continue
 		}
 		newVulns, err := model.GetVulnsByPurlName(ctx, purl)
 		if err != nil {
-			fmt.Printf("  %-28s NEW ERROR: %v\n", purl, err)
+			t.Errorf("%s: GetVulnsByPurlName failed: %v", purl, err)
 			continue
 		}
 		var newCves []string
@@ -131,8 +132,12 @@ func TestComparePostgres(t *testing.T) {
 			newCves = append(newCves, v.Cve)
 		}
 		o, n := set(oldCves), set(newCves)
-		fmt.Printf("  %-28s old=%-4d new=%-4d lost=%v gained=%d\n",
-			purl, len(o), len(n), diff(o, n), len(diff(n, o)))
+		lost := diff(o, n)
+		fmt.Printf("  %-28s old=%-4d new=%-4d lost=%d gained=%d\n",
+			purl, len(o), len(n), len(lost), len(diff(n, o)))
+		if len(lost) > 0 {
+			t.Errorf("%s: rewrite lost %d CVEs the original returned: %v", purl, len(lost), lost)
+		}
 	}
 
 	fmt.Println("\n########## variant WITH version ##########")
@@ -145,18 +150,18 @@ func TestComparePostgres(t *testing.T) {
 			JOIN versions v ON v.id = c.version_id
 			WHERE scp.purl = $1 AND v.version_name <> '' ORDER BY v.version_name LIMIT 12`, purl)
 		if err != nil {
-			fmt.Printf("  %s versions error: %v\n", purl, err)
+			t.Errorf("%s: could not list versions: %v", purl, err)
 			continue
 		}
 		for _, ver := range versions {
 			var oldCves []string
 			if err := db.SelectContext(ctx, &oldCves, oldVersionQuery, purl, ver); err != nil {
-				fmt.Printf("  %-24s %-14s OLD ERROR: %v\n", purl, ver, err)
+				t.Errorf("%s@%s: original query failed, parity cannot be checked: %v", purl, ver, err)
 				continue
 			}
 			newVulns, err := model.GetVulnsByPurlVersion(ctx, purl, ver)
 			if err != nil {
-				fmt.Printf("  %-24s %-14s NEW ERROR: %v\n", purl, ver, err)
+				t.Errorf("%s@%s: GetVulnsByPurlVersion failed: %v", purl, ver, err)
 				continue
 			}
 			var newCves []string
@@ -171,6 +176,15 @@ func TestComparePostgres(t *testing.T) {
 			}
 			fmt.Printf("%s %-24s %-14s old=%-4d new=%-4d lost=%-3d gained=%-3d\n",
 				flag, purl, ver, len(o), len(n), len(lost), len(gained))
+			if len(lost) > 0 {
+				t.Errorf("%s@%s: rewrite lost %d CVEs the original returned: %v",
+					purl, ver, len(lost), lost)
+			}
+			comparisons++
 		}
+	}
+	// A silent pass with nothing compared would look identical to a clean run.
+	if comparisons == 0 {
+		t.Errorf("no purl/version pairs were compared; the sample data may have changed")
 	}
 }
