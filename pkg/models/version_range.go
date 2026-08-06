@@ -17,17 +17,65 @@
 // Version range matching for NVD match criteria.
 //
 // This used to live in SQL, comparing versions with natural_sort_order, a custom
-// PostgreSQL function. Comparing here instead keeps the queries portable across
-// PostgreSQL and SQLite, and gives proper semantic version ordering rather than a
-// string sort - the same approach FilterCpesByRequirement already takes in cpe_purl.go.
+// PostgreSQL function that SQLite has no equivalent for. The comparison happens here
+// instead so the queries stay portable across both engines.
+//
+// naturalSortKey is a faithful port of that function rather than a semantic version
+// comparison, and covers reproduces the exact boolean shape of the original SQL. That
+// is deliberate: the data does not support semver ordering. 48% of the version names
+// and 39.5% of the version bounds in the production database are not valid semver -
+// values like "*", "-", "00.00.01a", "0.001.00.060" or buildbot branch names. Comparing
+// those semantically means either dropping them or guessing, and dropping them loses
+// real vulnerabilities. Measured against production data, a semver implementation
+// returned fewer CVEs than the SQL it replaced on 3 of 48 sampled purl/version pairs.
+//
+// Note that the zero padding preserves numeric ordering, so 9.0.0 still sorts before
+// 10.0.0. Where this differs from semver is pre-releases: 1.10.0-rc1 sorts *after*
+// 1.10.0, because it shares its prefix and carries extra characters. A pre-release
+// therefore inherits the vulnerabilities of its release, which is the behaviour the
+// service has in production today.
 
 package models
 
 import (
 	"strings"
-
-	"github.com/Masterminds/semver/v3"
 )
+
+// nsoMaxLength is the digit padding width. The SQL passed 20 at every call site.
+const nsoMaxLength = 20
+
+// naturalSortKey ports the natural_sort_order PostgreSQL function: each run of digits
+// is left-padded with zeros to maxLength so that numbers compare in numeric order,
+// while every other character is copied through. Comparing two keys as plain strings
+// then yields the same ordering the database produced.
+func naturalSortKey(value string, maxLength int) string {
+	// Bounds applied by the original function.
+	if maxLength <= 0 || maxLength > 150 {
+		maxLength = 75
+	}
+	var result, digits strings.Builder
+	flushDigits := func() {
+		if digits.Len() == 0 {
+			return
+		}
+		if pad := maxLength - digits.Len(); pad > 0 {
+			result.WriteString(strings.Repeat("0", pad))
+		}
+		result.WriteString(digits.String())
+		digits.Reset()
+	}
+	for _, char := range value {
+		// A digit past maxLength is emitted as a plain character, matching the original.
+		if char >= '0' && char <= '9' && digits.Len() < maxLength {
+			digits.WriteRune(char)
+			continue
+		}
+		flushDigits()
+		result.WriteRune(char)
+	}
+	flushDigits()
+	return result.String()
+}
 
 // versionBounds holds the version limits of an NVD match criterion. An empty bound
 // means the range is open on that side.
@@ -40,54 +88,27 @@ type versionBounds struct {
 
 // isOpen reports whether the criterion constrains the version at all.
 func (b versionBounds) isOpen() bool {
-	return len(strings.TrimSpace(b.StartIncluding)) == 0 &&
-		len(strings.TrimSpace(b.StartExcluding)) == 0 &&
-		len(strings.TrimSpace(b.EndIncluding)) == 0 &&
-		len(strings.TrimSpace(b.EndExcluding)) == 0
+	return len(b.StartIncluding) == 0 && len(b.StartExcluding) == 0 &&
+		len(b.EndIncluding) == 0 && len(b.EndExcluding) == 0
 }
 
-// covers reports whether the given version falls inside the bounds.
+// covers reports whether the given version falls inside the bounds. It mirrors the
+// boolean structure of the SQL it replaces, quirks included: an exact match against an
+// inclusive bound short-circuits on its own, so it wins even when the opposite bound
+// would exclude the version, and the range tests are strict comparisons because that
+// equality case is already handled.
 func (b versionBounds) covers(version string) bool {
-	version = strings.TrimSpace(version)
-	// An exact match on an inclusive bound settles it without parsing, so versions that
-	// are not valid semver still match the criteria that name them outright. The query
-	// this replaces short-circuited the same way.
-	if len(version) > 0 &&
-		(version == strings.TrimSpace(b.StartIncluding) || version == strings.TrimSpace(b.EndIncluding)) {
+	if version == b.StartIncluding || version == b.EndIncluding {
 		return true
 	}
-	if b.isOpen() {
-		return true
-	}
-	target, err := semver.NewVersion(version)
-	if err != nil {
-		// Nothing left to compare against: only the shortcut above could have matched.
-		return false
-	}
-	// cmp is the target compared against the bound.
-	checks := []struct {
-		bound string
-		ok    func(cmp int) bool
-	}{
-		{b.StartIncluding, func(cmp int) bool { return cmp >= 0 }},
-		{b.StartExcluding, func(cmp int) bool { return cmp > 0 }},
-		{b.EndIncluding, func(cmp int) bool { return cmp <= 0 }},
-		{b.EndExcluding, func(cmp int) bool { return cmp < 0 }},
-	}
-	for _, c := range checks {
-		bound := strings.TrimSpace(c.bound)
-		if len(bound) == 0 {
-			continue
-		}
-		bv, err := semver.NewVersion(bound)
-		if err != nil {
-			// Skip a bound we cannot parse rather than treat it as a mismatch: missing a
-			// real vulnerability is worse than reporting a borderline one.
-			continue
-		}
-		if !c.ok(target.Compare(bv)) {
-			return false
-		}
-	}
-	return true
+	key := naturalSortKey(version, nsoMaxLength)
+	// Lower bound: unconstrained, or past whichever start bound is set.
+	afterStart := (len(b.StartExcluding) == 0 && len(b.StartIncluding) == 0) ||
+		(len(b.StartExcluding) > 0 && key > naturalSortKey(b.StartExcluding, nsoMaxLength)) ||
+		(len(b.StartIncluding) > 0 && key > naturalSortKey(b.StartIncluding, nsoMaxLength))
+	// Upper bound: unconstrained, or short of whichever end bound is set.
+	beforeEnd := (len(b.EndExcluding) == 0 && len(b.EndIncluding) == 0) ||
+		(len(b.EndExcluding) > 0 && key < naturalSortKey(b.EndExcluding, nsoMaxLength)) ||
+		(len(b.EndIncluding) > 0 && key < naturalSortKey(b.EndIncluding, nsoMaxLength))
+	return afterStart && beforeEnd
 }
