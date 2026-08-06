@@ -71,82 +71,113 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(ctx context.Context, purl string, ver
 	return m.GetVulnsByPurlName(ctx, purlName)
 }
 
+// vulnsForPurlQuery returns every CVE reachable from a purl, paired with the version
+// bounds of the match criterion that connects the two. The path through the schema is
+// purl -> short_cpe_purl.cpe_id -> nvd_match_criteria_ids.short_cpe_id ->
+// match_criteria_id -> cves.match_criteria_ids.
+//
+// cves.match_criteria_ids holds a delimited list of criteria ids, so the last join
+// has to test for membership textually. The CAST keeps that working whether the column
+// is TEXT (SQLite) or an array (PostgreSQL), and COALESCE guards the nullable columns.
+//
+// Version filtering is deliberately absent here; it happens in Go, see version_range.go.
+const vulnsForPurlQuery = `SELECT DISTINCT
+	c.cve,
+	COALESCE(c.severity, '') AS severity,
+	c.published,
+	c.modified,
+	COALESCE(c.summary, '') AS summary,
+	COALESCE(nmci.version_start_including, '') AS version_start_including,
+	COALESCE(nmci.version_start_excluding, '') AS version_start_excluding,
+	COALESCE(nmci.version_end_including, '') AS version_end_including,
+	COALESCE(nmci.version_end_excluding, '') AS version_end_excluding
+FROM short_cpe_purl scp
+INNER JOIN nvd_match_criteria_ids nmci ON nmci.short_cpe_id = scp.cpe_id
+INNER JOIN cves c ON CAST(c.match_criteria_ids AS TEXT) LIKE '%' || nmci.match_criteria_id || '%'
+WHERE scp.purl = $1
+ORDER BY c.cve`
+
+// vulnRow is a single (CVE, match criterion) pair returned by vulnsForPurlQuery. One
+// CVE can appear more than once, via different criteria.
+type vulnRow struct {
+	VulnsForPurl
+	StartIncluding string `db:"version_start_including"`
+	StartExcluding string `db:"version_start_excluding"`
+	EndIncluding   string `db:"version_end_including"`
+	EndExcluding   string `db:"version_end_excluding"`
+}
+
+// bounds returns the version limits carried by this row.
+func (r vulnRow) bounds() versionBounds {
+	return versionBounds{
+		StartIncluding: r.StartIncluding,
+		StartExcluding: r.StartExcluding,
+		EndIncluding:   r.EndIncluding,
+		EndExcluding:   r.EndExcluding,
+	}
+}
+
+// queryVulnRows runs the shared query for the given purl name.
+func (m *VulnsForPurlModel) queryVulnRows(ctx context.Context, purlName string) ([]vulnRow, error) {
+	var rows []vulnRow
+	err := m.db.SelectContext(ctx, &rows, vulnsForPurlQuery, strings.TrimSpace(purlName))
+	if err != nil {
+		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
+		return nil, fmt.Errorf("failed to query the table: %v", err)
+	}
+	return rows, nil
+}
+
+// collapseByCve reduces the rows to one entry per CVE, keeping only those whose match
+// criterion satisfies keep. A nil keep accepts every row. Query order is preserved.
+func collapseByCve(rows []vulnRow, keep func(versionBounds) bool) []VulnsForPurl {
+	vulns := make([]VulnsForPurl, 0, len(rows))
+	seen := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		if keep != nil && !keep(row.bounds()) {
+			continue
+		}
+		if seen[row.Cve] {
+			continue
+		}
+		seen[row.Cve] = true
+		vulns = append(vulns, row.VulnsForPurl)
+	}
+	return vulns
+}
+
 // GetVulnsByPurlName searches for component details of the specified Purl Name/Type (and optional requirement).
 func (m *VulnsForPurlModel) GetVulnsByPurlName(ctx context.Context, purlName string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
-
-	var vulns []VulnsForPurl
-	purlName = strings.TrimSpace(purlName)
-	err := m.db.SelectContext(ctx, &vulns,
-		"SELECT c2.cve, c2.severity, c2.published, c2.modified, c2.summary "+
-			"FROM short_cpe_purl scp "+
-			"INNER JOIN cpes c ON scp.cpe_id = c.id "+
-			"INNER JOIN nvd_match_criteria_ids nmci ON trim(CAST(nmci.cpe_ids AS TEXT), '{}') LIKE '%' || scp.cpe_id || '%' "+
-			"INNER JOIN cves c2 ON trim(CAST(nmci.cpe_ids AS TEXT), '{}') LIKE  '%' || nmci.match_criteria_id || '%' "+
-			"WHERE "+
-			"scp.purl = $1",
-		purlName)
-
+	rows, err := m.queryVulnRows(ctx, purlName)
 	if err != nil {
-		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
-		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
+		return []VulnsForPurl{}, err
 	}
+	vulns := collapseByCve(rows, nil)
 	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
 
 	return vulns, nil
 }
 
+// GetVulnsByPurlVersion searches for the vulnerabilities of the specified Purl Name/Type
+// that apply to a given version. An empty version matches only the criteria that place
+// no bound on the version at all.
 func (m *VulnsForPurlModel) GetVulnsByPurlVersion(ctx context.Context, purlName string, purlVersion string) ([]VulnsForPurl, error) {
 	if len(purlName) == 0 {
 		zlog.S.Errorf("Please specify a valid Purl Name to query")
 		return []VulnsForPurl{}, errors.New("please specify a valid Purl Name to query")
 	}
-
-	var vulns []VulnsForPurl
-	purlName = strings.TrimSpace(purlName)
-	query := `WITH matching_criteria AS (
-	  SELECT array_agg(nmci.match_criteria_id) as criteria_ids
-	  FROM short_cpe_purl scp
-	  INNER JOIN short_cpes sc ON sc.id = scp.cpe_id
-	  INNER JOIN nvd_match_criteria_ids nmci ON nmci.short_cpe_id = sc.id
-	  WHERE scp.purl = $1
-		AND (
-			$2 = nmci.version_start_including
-			OR $2 = nmci.version_end_including
-			OR (
-				(
-					(nmci.version_start_excluding = '' AND nmci.version_start_including = '')
-					OR (nmci.version_start_excluding != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_excluding, 20))
-					OR (nmci.version_start_including != '' AND natural_sort_order($2, 20) > natural_sort_order(nmci.version_start_including, 20))
-				)
-				AND (
-					(nmci.version_end_excluding = '' AND nmci.version_end_including = '')
-					OR (nmci.version_end_excluding != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_excluding, 20))
-					OR (nmci.version_end_including != '' AND natural_sort_order($2, 20) < natural_sort_order(nmci.version_end_including, 20))
-				)
-			)
-		)
-	)
-	SELECT DISTINCT
-		c2.cve,
-		c2.severity,
-		c2.published,
-		c2.modified,
-		c2.summary
-	FROM cves c2, matching_criteria mc
-	WHERE c2.match_criteria_ids && mc.criteria_ids
-	ORDER BY c2.cve, c2.severity, c2.published, c2.modified, c2.summary;`
-
-	err := m.db.SelectContext(ctx, &vulns, query, purlName, purlVersion)
-
+	rows, err := m.queryVulnRows(ctx, purlName)
 	if err != nil {
-		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
-		return []VulnsForPurl{}, fmt.Errorf("failed to query the table: %v", err)
+		return []VulnsForPurl{}, err
 	}
+	vulns := collapseByCve(rows, func(b versionBounds) bool {
+		return b.covers(purlVersion)
+	})
+	zlog.S.Debugf("Found %v results for %v (version %v).", len(vulns), purlName, purlVersion)
 
-	zlog.S.Debugf("Found %v results for %v.", len(vulns), purlName)
 	return vulns, nil
 }

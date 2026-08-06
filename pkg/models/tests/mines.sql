@@ -1,11 +1,4 @@
-DROP TABLE IF EXISTS mines;
-CREATE TABLE mines (
-    id    INTEGER PRIMARY KEY,
-    purl_type  TEXT  DEFAULT '',
-    mine_name TEXT
-);
-
-
+-- Test data only. The schema comes from testSchemaDDL in pkg/models/test_schema.go; do not add DDL here.
 INSERT INTO mines (id, mine_name, purl_type) VALUES (0, 'maven.org', 'maven');
 INSERT INTO mines (id, mine_name, purl_type) VALUES (1, 'rubygems.org', 'gem');
 INSERT INTO mines (id, mine_name, purl_type) VALUES (2, 'npmjs.org', 'npm');
@@ -52,4 +45,3 @@ INSERT INTO mines (id, mine_name, purl_type) VALUES (42, 'crates.io', 'cargo');
 INSERT INTO mines (id, mine_name, purl_type) VALUES (43, 'eclipse.org', 'eclipse');
 INSERT INTO mines (id, mine_name, purl_type) VALUES (44, 'eclipse.org', 'gitlab');
 INSERT INTO mines (id, mine_name, purl_type) VALUES (45, 'golang.org', 'golang');
-

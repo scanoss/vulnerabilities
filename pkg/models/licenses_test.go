@@ -33,7 +33,7 @@ func TestLicensesSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -44,7 +44,7 @@ func TestLicensesSearch(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseConn(conn)
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	err = loadTestSQLDataFilesWithSchema(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestLicensesSearchId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -131,7 +131,7 @@ func TestLicensesSearchId(t *testing.T) {
 	defer CloseConn(conn)
 	defer CloseDB(db)
 	defer zlog.SyncZap()
-	err = loadTestSQLDataFiles(db, ctx, conn, []string{"../models/tests/licenses.sql"})
+	err = loadTestSQLDataFilesWithSchema(db, ctx, conn, []string{"../models/tests/licenses.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}

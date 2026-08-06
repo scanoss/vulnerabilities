@@ -57,8 +57,10 @@ func (m *VersionModel) GetVersionByName(ctx context.Context, name string, create
 		return Version{}, errors.New("please specify a valid Version Name to query")
 	}
 	var version Version
+	// COALESCE on id because the schema does not generate one: versions.id has no
+	// autoincrement, so a row written by saveVersion below has a NULL id.
 	err := m.db.QueryRowxContext(ctx,
-		"SELECT id, version_name, semver FROM versions"+
+		"SELECT COALESCE(id, 0) AS id, version_name, semver FROM versions"+
 			" WHERE version_name = $1",
 		name).StructScan(&version)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -80,10 +82,13 @@ func (m *VersionModel) saveVersion(ctx context.Context, name string) (Version, e
 	}
 	zlog.S.Debugf("Attempting to save '%v' to the versions table...", name)
 	var version Version
+	// The row is written without an id: the schema declares versions.id as a plain
+	// column with no autoincrement, so there is nothing to generate one. No caller
+	// reaches this path today, and none reads the returned ID.
 	err := m.db.QueryRowxContext(ctx,
 		"INSERT INTO versions (version_name, semver) VALUES($1, $2)"+
-			" RETURNING id, version_name, semver",
-		name, "", false, false,
+			" RETURNING COALESCE(id, 0) AS id, version_name, semver",
+		name, "",
 	).StructScan(&version)
 	if err != nil {
 		zlog.S.Errorf("Error: Failed to insert new version name into versions table for %v: %v", name, err)

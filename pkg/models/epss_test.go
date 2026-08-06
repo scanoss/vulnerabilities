@@ -28,7 +28,7 @@ import (
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func TestGetEPSSByCVEs(t *testing.T) {
@@ -41,13 +41,13 @@ func TestGetEPSSByCVEs(t *testing.T) {
 
 	s := ctxzap.Extract(ctx).Sugar()
 
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseDB(db)
 
-	err = loadSQLData(db, nil, nil, "./tests/epss.sql")
+	err = loadTestSQLDataFilesWithSchema(db, nil, nil, []string{"./tests/epss.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -68,6 +68,26 @@ func TestGetEPSSByCVEs(t *testing.T) {
 	if len(results) != 3 {
 		t.Errorf("GetEPSSByCVEs() expected 3 results, got %d", len(results))
 	}
+	// The scores must survive the scan, not just the row count. epss_data columns are
+	// TEXT like the rest of the schema, so this covers the TEXT to float32 conversion.
+	want := map[string][2]float32{
+		"CVE-2017-9302":  {0.00143, 0.5124},
+		"CVE-2015-0269":  {0.00285, 0.6832},
+		"CVE-2018-10083": {0.00891, 0.8215},
+	}
+	for _, got := range results {
+		exp, ok := want[got.Cve]
+		if !ok {
+			t.Errorf("GetEPSSByCVEs() returned unexpected CVE %v", got.Cve)
+			continue
+		}
+		if got.Epss != exp[0] {
+			t.Errorf("GetEPSSByCVEs() %v epss = %v, want %v", got.Cve, got.Epss, exp[0])
+		}
+		if got.Percentile != exp[1] {
+			t.Errorf("GetEPSSByCVEs() %v percentile = %v, want %v", got.Cve, got.Percentile, exp[1])
+		}
+	}
 }
 
 func TestGetEPSSByCVEsEmpty(t *testing.T) {
@@ -79,7 +99,7 @@ func TestGetEPSSByCVEsEmpty(t *testing.T) {
 	defer zlog.SyncZap()
 	s := ctxzap.Extract(ctx).Sugar()
 
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -90,7 +110,7 @@ func TestGetEPSSByCVEsEmpty(t *testing.T) {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 
-	err = loadSQLData(db, nil, nil, "./tests/epss.sql")
+	err = loadTestSQLDataFilesWithSchema(db, nil, nil, []string{"./tests/epss.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -116,7 +136,7 @@ func TestGetEPSSByCVEsNotFound(t *testing.T) {
 	defer zlog.SyncZap()
 	s := ctxzap.Extract(ctx).Sugar()
 
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -127,7 +147,7 @@ func TestGetEPSSByCVEsNotFound(t *testing.T) {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 
-	err = loadSQLData(db, nil, nil, "./tests/epss.sql")
+	err = loadTestSQLDataFilesWithSchema(db, nil, nil, []string{"./tests/epss.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -154,7 +174,7 @@ func TestGetEPSSByCVEsSingleCVE(t *testing.T) {
 	defer zlog.SyncZap()
 	s := ctxzap.Extract(ctx).Sugar()
 
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -165,7 +185,7 @@ func TestGetEPSSByCVEsSingleCVE(t *testing.T) {
 		t.Fatalf("failed to load Config: %v", err)
 	}
 
-	err = loadSQLData(db, nil, nil, "./tests/epss.sql")
+	err = loadTestSQLDataFilesWithSchema(db, nil, nil, []string{"./tests/epss.sql"})
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
