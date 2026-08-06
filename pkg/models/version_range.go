@@ -41,32 +41,30 @@ import (
 	"strings"
 )
 
-// nsoMaxLength is the digit padding width. The SQL passed 20 at every call site.
+// nsoMaxLength is the digit padding width. The SQL passed 20 at every call site, so
+// that is fixed here; the original function's guard for out-of-range widths is
+// unreachable at this width and is not reproduced.
 const nsoMaxLength = 20
 
 // naturalSortKey ports the natural_sort_order PostgreSQL function: each run of digits
-// is left-padded with zeros to maxLength so that numbers compare in numeric order,
+// is left-padded with zeros to nsoMaxLength so that numbers compare in numeric order,
 // while every other character is copied through. Comparing two keys as plain strings
 // then yields the same ordering the database produced.
-func naturalSortKey(value string, maxLength int) string {
-	// Bounds applied by the original function.
-	if maxLength <= 0 || maxLength > 150 {
-		maxLength = 75
-	}
+func naturalSortKey(value string) string {
 	var result, digits strings.Builder
 	flushDigits := func() {
 		if digits.Len() == 0 {
 			return
 		}
-		if pad := maxLength - digits.Len(); pad > 0 {
+		if pad := nsoMaxLength - digits.Len(); pad > 0 {
 			result.WriteString(strings.Repeat("0", pad))
 		}
 		result.WriteString(digits.String())
 		digits.Reset()
 	}
 	for _, char := range value {
-		// A digit past maxLength is emitted as a plain character, matching the original.
-		if char >= '0' && char <= '9' && digits.Len() < maxLength {
+		// A digit past nsoMaxLength is emitted as a plain character, as the original does.
+		if char >= '0' && char <= '9' && digits.Len() < nsoMaxLength {
 			digits.WriteRune(char)
 			continue
 		}
@@ -86,12 +84,6 @@ type versionBounds struct {
 	EndExcluding   string
 }
 
-// isOpen reports whether the criterion constrains the version at all.
-func (b versionBounds) isOpen() bool {
-	return len(b.StartIncluding) == 0 && len(b.StartExcluding) == 0 &&
-		len(b.EndIncluding) == 0 && len(b.EndExcluding) == 0
-}
-
 // covers reports whether the given version falls inside the bounds. It mirrors the
 // boolean structure of the SQL it replaces, quirks included: an exact match against an
 // inclusive bound short-circuits on its own, so it wins even when the opposite bound
@@ -101,14 +93,14 @@ func (b versionBounds) covers(version string) bool {
 	if version == b.StartIncluding || version == b.EndIncluding {
 		return true
 	}
-	key := naturalSortKey(version, nsoMaxLength)
+	key := naturalSortKey(version)
 	// Lower bound: unconstrained, or past whichever start bound is set.
 	afterStart := (len(b.StartExcluding) == 0 && len(b.StartIncluding) == 0) ||
-		(len(b.StartExcluding) > 0 && key > naturalSortKey(b.StartExcluding, nsoMaxLength)) ||
-		(len(b.StartIncluding) > 0 && key > naturalSortKey(b.StartIncluding, nsoMaxLength))
+		(len(b.StartExcluding) > 0 && key > naturalSortKey(b.StartExcluding)) ||
+		(len(b.StartIncluding) > 0 && key > naturalSortKey(b.StartIncluding))
 	// Upper bound: unconstrained, or short of whichever end bound is set.
 	beforeEnd := (len(b.EndExcluding) == 0 && len(b.EndIncluding) == 0) ||
-		(len(b.EndExcluding) > 0 && key < naturalSortKey(b.EndExcluding, nsoMaxLength)) ||
-		(len(b.EndIncluding) > 0 && key < naturalSortKey(b.EndIncluding, nsoMaxLength))
+		(len(b.EndExcluding) > 0 && key < naturalSortKey(b.EndExcluding)) ||
+		(len(b.EndIncluding) > 0 && key < naturalSortKey(b.EndIncluding))
 	return afterStart && beforeEnd
 }

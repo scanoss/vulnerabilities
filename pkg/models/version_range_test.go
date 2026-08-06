@@ -52,24 +52,10 @@ func TestNaturalSortKeyMatchesPostgres(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			if got := naturalSortKey(tt.in, 20); got != tt.want {
-				t.Errorf("naturalSortKey(%q, 20)\n got %q\nwant %q", tt.in, got, tt.want)
+			if got := naturalSortKey(tt.in); got != tt.want {
+				t.Errorf("naturalSortKey(%q)\n got %q\nwant %q", tt.in, got, tt.want)
 			}
 		})
-	}
-}
-
-// TestNaturalSortKeyMaxLengthBounds covers the guard the original function applies.
-func TestNaturalSortKeyMaxLengthBounds(t *testing.T) {
-	// out of range values fall back to 75
-	for _, maxLength := range []int{0, -1, 151} {
-		got := naturalSortKey("1", maxLength)
-		if len(got) != 75 {
-			t.Errorf("naturalSortKey(%q, %d) length = %d, want 75", "1", maxLength, len(got))
-		}
-	}
-	if got := naturalSortKey("1", 5); got != "00001" {
-		t.Errorf("naturalSortKey(%q, 5) = %q, want %q", "1", got, "00001")
 	}
 }
 
@@ -100,7 +86,7 @@ func TestNaturalSortKeyOrdering(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lo, hi := naturalSortKey(tt.lower, 20), naturalSortKey(tt.higher, 20)
+			lo, hi := naturalSortKey(tt.lower), naturalSortKey(tt.higher)
 			if !(lo < hi) {
 				t.Errorf("expected %q < %q (%s)\n lower key %q\nhigher key %q",
 					tt.lower, tt.higher, tt.whyItRuns, lo, hi)
@@ -197,27 +183,6 @@ func TestVersionBoundsCovers(t *testing.T) {
 				if got := tt.bounds.covers(version); got != want {
 					t.Errorf("versionBounds%+v.covers(%q) = %v, want %v", tt.bounds, version, got, want)
 				}
-			}
-		})
-	}
-}
-
-func TestVersionBoundsIsOpen(t *testing.T) {
-	tests := []struct {
-		name   string
-		bounds versionBounds
-		want   bool
-	}{
-		{name: "all empty", bounds: versionBounds{}, want: true},
-		{name: "start including set", bounds: versionBounds{StartIncluding: "1.0.0"}, want: false},
-		{name: "start excluding set", bounds: versionBounds{StartExcluding: "1.0.0"}, want: false},
-		{name: "end including set", bounds: versionBounds{EndIncluding: "1.0.0"}, want: false},
-		{name: "end excluding set", bounds: versionBounds{EndExcluding: "1.0.0"}, want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.bounds.isOpen(); got != tt.want {
-				t.Errorf("versionBounds%+v.isOpen() = %v, want %v", tt.bounds, got, tt.want)
 			}
 		})
 	}

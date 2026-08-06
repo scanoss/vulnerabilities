@@ -101,16 +101,6 @@ func LoadTestSQLData(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn) error {
 	return loadTestSQLDataFiles(db, ctx, conn, testDataFiles)
 }
 
-// loadTestSQLDataFilesWithSchema loads the production schema followed by the given
-// data fixtures. Use this instead of loadTestSQLDataFiles when a test only needs a
-// subset of the fixtures, since the fixtures no longer create their own tables.
-func loadTestSQLDataFilesWithSchema(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn, files []string) error {
-	if err := LoadTestSchema(db, ctx, conn); err != nil {
-		return err
-	}
-	return loadTestSQLDataFiles(db, ctx, conn, files)
-}
-
 // loadTestSQLDataFiles loads a list of test SQL files.
 func loadTestSQLDataFiles(db *sqlx.DB, ctx context.Context, conn *sqlx.Conn, files []string) error {
 	for _, file := range files {

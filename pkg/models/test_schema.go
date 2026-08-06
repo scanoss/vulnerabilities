@@ -36,7 +36,12 @@ CREATE TABLE db_version (
                 created_at TEXT NOT NULL,
                 db_release TEXT NOT NULL
             );
-CREATE TABLE all_urls (package_hash TEXT, component TEXT, purl_name TEXT, mine_id TEXT, vendor TEXT, version TEXT, version_id TEXT, date TEXT, license_id TEXT, is_mined TEXT, indexed_date TEXT, version_status TEXT, version_status_change_date TEXT, total_files TEXT, indexed_files TEXT, source_files TEXT, ignored_files TEXT, package_size TEXT);
+CREATE TABLE all_urls (
+    package_hash TEXT, component TEXT, purl_name TEXT, mine_id TEXT, vendor TEXT, version TEXT,
+    version_id TEXT, date TEXT, license_id TEXT, is_mined TEXT, indexed_date TEXT, version_status TEXT,
+    version_status_change_date TEXT, total_files TEXT, indexed_files TEXT, source_files TEXT,
+    ignored_files TEXT, package_size TEXT
+);
 CREATE INDEX idx_allurls_name ON all_urls (purl_name, mine_id, license_id, version_id);
 CREATE INDEX idx_allurls_comp ON all_urls (component, vendor, mine_id);
 CREATE INDEX idx_allurls_phash ON all_urls (purl_name, package_hash, mine_id, version_id);
@@ -46,7 +51,12 @@ CREATE TABLE licenses (id TEXT, license_name TEXT, spdx_id TEXT, is_spdx TEXT);
 CREATE INDEX idx_license_id_license_name_spdx_id_is_spdx ON licenses (id, license_name, spdx_id, is_spdx);
 CREATE TABLE mines (id TEXT, purl_type TEXT, mine_name TEXT, can_download TEXT, repository_url TEXT);
 CREATE INDEX idx_mines_purl_type ON mines (purl_type, id);
-CREATE TABLE projects (mine_id TEXT, purl_name TEXT, vendor TEXT, component TEXT, versions TEXT, license_id TEXT, git_license_id TEXT, first_version_date TEXT, git_created_at TEXT, git_forks TEXT, git_stars TEXT, first_indexed_date TEXT, last_indexed_date TEXT, status TEXT, status_change_date TEXT, source_mine_id TEXT, source_purl_name TEXT);
+CREATE TABLE projects (
+    mine_id TEXT, purl_name TEXT, vendor TEXT, component TEXT, versions TEXT, license_id TEXT,
+    git_license_id TEXT, first_version_date TEXT, git_created_at TEXT, git_forks TEXT, git_stars TEXT,
+    first_indexed_date TEXT, last_indexed_date TEXT, status TEXT, status_change_date TEXT,
+    source_mine_id TEXT, source_purl_name TEXT
+);
 CREATE INDEX idx_projects ON projects (purl_name, mine_id, license_id, git_license_id);
 CREATE TABLE versions (id TEXT, version_name TEXT, semver TEXT);
 CREATE INDEX idx_versions_version_name_id_semver ON versions (version_name, id, semver);
@@ -64,7 +74,10 @@ CREATE INDEX idx_vendor_locations_declared_location ON vendor_locations (declare
 CREATE TABLE cpes (cpe TEXT, version_id TEXT, short_cpe_id TEXT);
 CREATE TABLE short_cpe_purl (cpe_id TEXT, purl_id TEXT, purl TEXT);
 CREATE INDEX short_cpe_purl_purl ON short_cpe_purl (purl);
-CREATE TABLE nvd_match_criteria_ids (match_criteria_id TEXT, short_cpe_id TEXT, version_start_including TEXT, version_start_excluding TEXT, version_end_including TEXT, version_end_excluding TEXT);
+CREATE TABLE nvd_match_criteria_ids (
+    match_criteria_id TEXT, short_cpe_id TEXT, version_start_including TEXT,
+    version_start_excluding TEXT, version_end_including TEXT, version_end_excluding TEXT
+);
 CREATE TABLE short_cpes (id TEXT);
 CREATE TABLE cves (cve TEXT, severity TEXT, published TEXT, modified TEXT, summary TEXT, match_criteria_ids TEXT);
 CREATE INDEX idx_cves_match_criteria_ids ON cves (match_criteria_ids);
