@@ -33,7 +33,7 @@ func TestGetVulnsByPurl(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -96,7 +96,7 @@ func TestGetVulnsByPurlName(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -122,7 +122,7 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a sugared logger", err)
 	}
 	defer zlog.SyncZap()
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
@@ -146,9 +146,13 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlVersion()")
 	}
 
+	// The model queries through the pool, so the DB itself has to be closed to make the
+	// query fail. Closing conn only returns it to the pool; this assertion used to pass
+	// for the wrong reason, on a query SQLite could not even parse.
 	CloseConn(conn)
+	CloseDB(db)
 	_, err = cpeModel.GetVulnsByPurlVersion(ctx, "pkg:github/hapijs/call", "1.0.0")
 	if err == nil {
-		t.Errorf("Error was expected because purl is empty in cpeModel.GetVulnsByPurlVersion()")
+		t.Errorf("Error was expected because the DB is closed in cpeModel.GetVulnsByPurlVersion()")
 	}
 }

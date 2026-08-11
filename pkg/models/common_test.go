@@ -22,7 +22,7 @@ import (
 	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func TestDbLoad(t *testing.T) {
@@ -32,12 +32,12 @@ func TestDbLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	db, err := sqlx.Connect("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer CloseDB(db)
-	err = loadSQLData(db, nil, nil, "./tests/mines.sql")
+	err = loadTestSQLDataFilesWithSchema(db, nil, nil, []string{"./tests/mines.sql"})
 	if err != nil {
 		t.Errorf("failed to load SQL test data: %v", err)
 	}

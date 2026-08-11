@@ -37,12 +37,17 @@ APP_PORT=50052
 APP_MODE=dev
 APP_DEBUG=false
 
-DB_DRIVER=postgres
+DB_DRIVER=postgres                  # postgres or sqlite
 DB_HOST=localhost
 DB_USER=scanoss
 DB_PASSWD=
 DB_SCHEMA=vulnerabilities
 DB_SSL_MODE=disable
+
+# To run against SQLite instead, point DB_DSN at the database file.
+# The remaining DB_* values are only used to build a DSN when DB_DSN is empty.
+# DB_DRIVER=sqlite
+# DB_DSN=/path/to/vulnerabilities.db
 
 # Vulnerability data sources
 OSV_ENABLED=true                    # Enable/disable OSV (Open Source Vulnerabilities) database

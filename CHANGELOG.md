@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
+## [0.14.0] - 2026-08-11
+### Added
+- SQLite support alongside PostgreSQL: set `DB_DRIVER=sqlite` and `DB_DSN` to a database file
+- `sql.Scanner` and `driver.Valuer` on `utils.OnlyDate`, so a date reads from a `TEXT` column (SQLite) or a `date` column (PostgreSQL)
+- `pkg/models/test_schema.go` holding the production schema the tests build their database from
+- `pkg/models/tests/vulns_scenario.sql`, a deterministic fixture whose match criteria cover every version-bound combination
+- `pkg/models/pg_parity_test.go`, comparing the rewritten queries against the ones they replace on a real PostgreSQL database. Skipped unless `PG_DSN` is set
+
+### Changed
+- Rewrote both vulnerability queries as portable SQL, valid on PostgreSQL and SQLite
+- Moved version range matching out of SQL into `pkg/models/version_range.go`, porting the `natural_sort_order` PostgreSQL function so both engines agree on which vulnerabilities apply to a version
+- Test fixtures under `pkg/models/tests/` now carry data only. They used to define their own tables, describing a schema that does not exist, which is what let queries referencing non-existent columns pass CI
+- Unified the test driver on `modernc.org/sqlite`, the one the server uses; `mattn/go-sqlite3` is no longer a direct dependency and CGO is not required
+
+### Fixed
+- `GetVulnsByPurlName` joined `cpes.id` and `nvd_match_criteria_ids.cpe_ids`, matching numeric CPE ids against a UUID. It returned no vulnerabilities at all on PostgreSQL and could not run on SQLite
+- `GetVulnsByPurlVersion` relied on `array_agg`, the `&&` array overlap operator and the custom `natural_sort_order` function, none available in SQLite
+- `saveLicense` inserted `is_sanitized`, which is not a column in the `licenses` table
+- `saveVersion` passed four arguments to an insert with two placeholders
+
+### Deployment
+- Requires an `epss_data` table (`cve`, `epss`, `percentile`) plus an index on `cve`. Without it the EPSS lookup fails on every request and every vulnerability is returned with `epss.probability` and `epss.percentile` reading `0`, indistinguishable from a genuine zero
+
 ## [0.13.0] - 2026-06-22
 ### Added
 - `/health` liveness endpoint (GET) on the REST gateway
