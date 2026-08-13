@@ -15,326 +15,166 @@
  */
 
 // Package usecase implements the vulnerabilities service business logic.
+//
+// OSV vulnerabilities are read from the database rather than from api.osv.dev. The HTTP
+// client, its worker pool sizing and the GIT-ecosystem fallback are gone: the osv table
+// stores purls directly, including pkg:github ones, so a component is looked up by its
+// purl with no translation to a repository URL and no retry.
+//
+// The response shape is unchanged. VULN_OSV_API_BASE_URL is no longer used;
+// VULN_OSV_VULNERABILITY_INFO_BASE_URL still is, because it builds the URL of each
+// returned vulnerability. VULN_OSV_API_WORKERS keeps its role as the concurrency limit,
+// now over database lookups instead of HTTP calls.
 package usecase
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
 	"time"
 
-	"github.com/package-url/packageurl-go"
+	"github.com/jmoiron/sqlx"
 	compHelper "github.com/scanoss/go-component-helper/componenthelper"
 	"github.com/scanoss/go-grpc-helper/pkg/grpc/domain"
-	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
 	"go.uber.org/zap"
 	"scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
+	"scanoss.com/vulnerabilities/pkg/models"
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
 
-type OSVPackageRequest struct {
-	Purl      string `json:"purl,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Ecosystem string `json:"ecosystem,omitempty"`
-}
-
-type OSVRequest struct {
-	Version         string             `json:"version,omitempty"`
-	Package         OSVPackageRequest  `json:"package"`
-	Requirement     string             `json:"-"`
-	OriginalPurl    string             `json:"-"`
-	FallbackPackage *OSVPackageRequest `json:"-"`
-}
+// osvSource is the value reported in the source field of every OSV vulnerability.
+const osvSource = "OSV"
 
 type OSVUseCase struct {
-	OSVAPIBaseURL  string
 	OSVInfoBaseURL string
-	client         *http.Client // Single shared
-	MaxAPIWorkers  int
+	maxWorkers     int
+	model          *models.OSVModel
 	s              *zap.SugaredLogger
 }
 
-func NewOSVUseCase(s *zap.SugaredLogger, config *config.ServerConfig) *OSVUseCase {
+func NewOSVUseCase(s *zap.SugaredLogger, config *config.ServerConfig, db *sqlx.DB) *OSVUseCase {
+	workers := config.Source.OSV.APIWorkers
+	if workers < 1 {
+		workers = 1
+	}
 	return &OSVUseCase{
-		OSVAPIBaseURL:  config.Source.OSV.APIBaseURL,
 		OSVInfoBaseURL: config.Source.OSV.InfoBaseURL,
-		client: &http.Client{
-			Timeout: 15 * time.Second,
-		},
-		MaxAPIWorkers: config.Source.OSV.APIWorkers,
-		s:             s,
+		maxWorkers:     workers,
+		model:          models.NewOSVModel(s, db),
+		s:              s,
 	}
-}
-
-// getRepoURL converts a PURL string into a Git repository URL if the PURL refers to a known git host.
-//
-// It supports two resolution strategies:
-//
-//  1. repository_url qualifier: If the PURL contains a "repository_url" qualifier, its value is used directly.
-//     This is the standard mechanism for hosts without a dedicated PURL type (e.g., pkg:/...?repository_url=https://gitlab.gnome.org/GNOME/gimp).
-//
-//  2. Direct type-based: For PURL types that have a spec-defined default repository URL, the host is resolved
-//     from the type (e.g., pkg:github/owner/repo -> https://github.com/owner/repo).
-//
-// Supported PURL types with default URLs (defined in spec):
-//   - github:    https://github.com    (see: https://github.com/package-url/purl-spec/blob/main/types-doc/github-definition.md)
-//   - bitbucket: https://bitbucket.org (see: https://github.com/package-url/purl-spec/blob/main/types-doc/bitbucket-definition.md)
-//
-// Supported PURL types with default URLs (not yet in spec):
-//   - gitlab: https://gitlab.com  (candidate: https://github.com/package-url/purl-spec/blob/main/docs/candidate-purl-types.md)
-//   - gitee:  https://gitee.com   (not in spec or candidates)
-//
-// Not handled: git hosts without a dedicated PURL type and without a "repository_url" qualifier
-// (e.g., gitlab.gnome.org, gitlab.freedesktop.org, gitlab.xiph.org, vcgit.hhi.fraunhofer.de,
-// git.codelinaro.org, yoctoproject.org, trustedfirmware.org, sourceware.org, gitcode.com,
-// eclipse.org, invent.kde.org). These hosts have no defined PURL type in the spec.
-//
-// Reference: https://github.com/package-url/purl-spec
-//
-// Returns a pointer to the repository URL string, or nil if the PURL is invalid or does not match any known git host.
-func (us OSVUseCase) getRepoURL(purlString string) *string {
-	// Parse PURL to check if it's a git-based package
-	purl, err := packageurl.FromString(purlString)
-	if err != nil {
-		return nil
-	}
-	repoURL := purl.Qualifiers.Map()["repository_url"]
-	if repoURL != "" {
-		decoded, errUnescape := url.QueryUnescape(repoURL)
-		if errUnescape != nil {
-			return nil
-		}
-		return &decoded
-	}
-
-	// Default URLs by purl type
-	gitHosts := map[string]string{
-		"github":    "https://github.com",
-		"gitlab":    "https://gitlab.com", // not defined in the purl spec. See: https://github.com/package-url/purl-spec/blob/main/docs/candidate-purl-types.md
-		"bitbucket": "https://bitbucket.org",
-		"gitee":     "https://gitee.com",
-	}
-	host, hostFound := gitHosts[purl.Type]
-	namespace := purl.Namespace
-	if hostFound {
-		built := fmt.Sprintf("%s/%s/%s", host, namespace, purl.Name)
-		return &built
-	}
-	return nil
-}
-
-// getOSVRequestsFromDTO converts a slice of ComponentDTOs into OSVRequest objects.
-// For git-based packages (GitHub, GitLab, Bitbucket), it constructs a repository URL
-// and sets the ecosystem to "GIT", with the original PURL as a fallback.
-// For all other packages, the PURL is used directly.
-func (us OSVUseCase) getOSVRequestsFromDTO(componentDTOs []compHelper.Component) []OSVRequest {
-	var osvRequests []OSVRequest
-	for _, c := range componentDTOs {
-		osvRequest := OSVRequest{
-			Version:      c.Version,
-			Requirement:  c.Requirement,
-			OriginalPurl: c.Purl,
-		}
-		// Parse PURL to check if it's a git-based package
-		repoURL := us.getRepoURL(c.Purl)
-
-		if repoURL != nil {
-			osvRequest.Package = OSVPackageRequest{
-				Name:      *repoURL,
-				Ecosystem: "GIT",
-			}
-			fallback := OSVPackageRequest{
-				Purl: c.Purl,
-			}
-			osvRequest.FallbackPackage = &fallback
-		}
-		if osvRequest.Package == (OSVPackageRequest{}) {
-			// For other packages, use the PURL directly
-			osvRequest.Package = OSVPackageRequest{
-				Purl: c.Purl,
-			}
-		}
-		osvRequests = append(osvRequests, osvRequest)
-	}
-	return osvRequests
 }
 
 func (us OSVUseCase) Execute(ctx context.Context, components []compHelper.Component) dtos.VulnerabilityOutput {
-	osvRequests := us.getOSVRequestsFromDTO(components)
-	return us.processRequests(ctx, osvRequests)
-}
-
-func (us OSVUseCase) processRequests(ctx context.Context, requests []OSVRequest) dtos.VulnerabilityOutput {
-	numJobs := len(requests)
-	jobs := make(chan OSVRequest, numJobs)
+	numJobs := len(components)
+	response := dtos.VulnerabilityOutput{Components: []dtos.VulnerabilityComponentOutput{}}
+	if numJobs == 0 {
+		return response
+	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
+	jobs := make(chan compHelper.Component, numJobs)
 	results := make(chan dtos.VulnerabilityComponentOutput, numJobs)
-	workers := min(us.MaxAPIWorkers, numJobs)
+	workers := min(us.maxWorkers, numJobs)
 	for i := 0; i < workers; i++ {
-		go us.processRequest(ctx, jobs, results)
+		go us.processComponent(ctx, jobs, results)
 	}
-	for _, r := range requests {
-		jobs <- r
+	for _, c := range components {
+		jobs <- c
 	}
 	close(jobs)
-	// Collect all results into a slice
-	var response = dtos.VulnerabilityOutput{
-		Components: []dtos.VulnerabilityComponentOutput{},
-	}
 	for i := 0; i < numJobs; i++ {
-		result := <-results
-		response.Components = append(response.Components, result)
+		response.Components = append(response.Components, <-results)
 	}
 	return response
 }
 
-// processRequest is a worker function that processes OSV vulnerability requests concurrently.
-// It reads requests from the jobs channel, queries the OSV API for each request, and sends
-// the results to the results channel. The worker terminates when the jobs channel is closed
-// or when the context is cancelled.
-func (us OSVUseCase) processRequest(ctx context.Context, jobs chan OSVRequest, results chan dtos.VulnerabilityComponentOutput) {
+// processComponent is a worker that looks up each component and sends the result on.
+func (us OSVUseCase) processComponent(ctx context.Context, jobs chan compHelper.Component,
+	results chan dtos.VulnerabilityComponentOutput) {
 	for {
 		select {
-		case j, ok := <-jobs:
+		case c, ok := <-jobs:
 			if !ok {
-				return // Channel closed, stop worker
+				return // channel closed, stop worker
 			}
-			response := dtos.VulnerabilityComponentOutput{
-				Purl:        j.OriginalPurl,
-				Requirement: j.Requirement,
-				Version:     j.Version,
-				ComponentStatus: domain.ComponentStatus{
-					Message:    "",
-					StatusCode: domain.Success,
-				},
-			}
-			response.Vulnerabilities = us.queryOSV(ctx, j)
-
-			// Fallback: if GIT ecosystem returned no results, retry with the PURL directly
-			if len(response.Vulnerabilities) == 0 && j.FallbackPackage != nil {
-				us.s.Debugf("No vulnerabilities found for GIT ecosystem, falling back to PURL query for: %s", j.OriginalPurl)
-				fallbackReq := OSVRequest{
-					Version:      j.Version,
-					Package:      *j.FallbackPackage,
-					OriginalPurl: j.OriginalPurl,
-				}
-				fallbackVulns := us.queryOSV(ctx, fallbackReq)
-				if fallbackVulns != nil {
-					response.Vulnerabilities = fallbackVulns
-				} else {
-					response.ComponentStatus = domain.ComponentStatus{
-						Message:    "No vulnerabilities found for: " + j.OriginalPurl,
-						StatusCode: domain.NoInfo,
-					}
-				}
-			} else if len(response.Vulnerabilities) == 0 {
-				response.ComponentStatus = domain.ComponentStatus{
-					Message:    "No vulnerabilities found for: " + j.OriginalPurl,
-					StatusCode: domain.NoInfo,
-				}
-			}
-			results <- response
+			results <- us.lookup(ctx, c)
 		case <-ctx.Done():
-			// Cancellation signal received: stop working and return immediately
 			us.s.Debugf("Worker: Cancellation signal received, stopping.")
 			return
 		}
 	}
 }
 
-// queryOSV performs a single OSV API query and returns mapped vulnerabilities, or nil on error.
-func (us OSVUseCase) queryOSV(ctx context.Context, r OSVRequest) []dtos.VulnerabilitiesOutput {
-	out, err := json.Marshal(struct {
-		Version string            `json:"version,omitempty"`
-		Package OSVPackageRequest `json:"package"`
-	}{
-		Version: r.Version,
-		Package: r.Package,
-	})
-	if err != nil {
-		us.s.Errorf("Failed to marshal request: %s", err)
-		return nil
+// lookup queries the OSV tables for one component.
+func (us OSVUseCase) lookup(ctx context.Context, c compHelper.Component) dtos.VulnerabilityComponentOutput {
+	response := dtos.VulnerabilityComponentOutput{
+		Purl:        c.Purl,
+		Requirement: c.Requirement,
+		Version:     c.Version,
+		ComponentStatus: domain.ComponentStatus{
+			Message:    "",
+			StatusCode: domain.Success,
+		},
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, us.OSVAPIBaseURL+"/query", bytes.NewBuffer(out))
+	// The stored purls carry no version, so strip one if the caller left it in.
+	purl := utils.PurlRemoveFromVersionComponent(c.Purl)
+	vulns, err := us.model.GetVulnsByPurl(ctx, purl, c.Version)
 	if err != nil {
-		us.s.Errorf("Failed to create HTTP request: %s", err)
-		return nil
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := us.client.Do(req)
-	if err != nil {
-		us.s.Errorf("HTTP request failed: %s", err)
-		return nil
-	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			us.s.Warnf("Failed to close response body: %s", closeErr)
+		// Reported as a lookup failure rather than as "nothing found", so a broken query
+		// cannot be mistaken for a clean component.
+		us.s.Errorf("Failed to get OSV vulnerabilities for %v: %v", c.Purl, err)
+		response.ComponentStatus = domain.ComponentStatus{
+			Message:    "Failed to query OSV data for: " + c.Purl,
+			StatusCode: domain.NoInfo,
 		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		us.s.Errorf("Unexpected HTTP status: %d", resp.StatusCode)
-		return nil
+		return response
 	}
-
-	var osvResponse dtos.OSVResponseDTO
-	err = json.NewDecoder(resp.Body).Decode(&osvResponse)
-	if err != nil {
-		us.s.Errorf("Failed to decode response: %s", err)
-		return nil
+	response.Vulnerabilities = us.mapVulnerabilities(vulns)
+	if len(response.Vulnerabilities) == 0 {
+		response.ComponentStatus = domain.ComponentStatus{
+			Message:    "No vulnerabilities found for: " + c.Purl,
+			StatusCode: domain.NoInfo,
+		}
 	}
-	return us.mapOSVVulnerabilities(osvResponse.Vulns)
+	return response
 }
 
-// mapOSVVulnerabilities converts OSV vulnerabilities to the required DTO structure.
-func (us OSVUseCase) mapOSVVulnerabilities(vulns []dtos.Entry) []dtos.VulnerabilitiesOutput {
-	vulnerabilities := make([]dtos.VulnerabilitiesOutput, 0, len(vulns))
-	for _, vul := range vulns {
-		// Select CVE or use the ID as fallback
-		cve := vul.ID
-		if len(vul.Aliases) > 0 {
-			cve = vul.Aliases[0]
+// mapVulnerabilities converts stored OSV vulnerabilities into the response DTO.
+func (us OSVUseCase) mapVulnerabilities(vulns []models.OSVVulnerability) []dtos.VulnerabilitiesOutput {
+	out := make([]dtos.VulnerabilitiesOutput, 0, len(vulns))
+	for _, vuln := range vulns {
+		// Prefer the first alias, which is where the CVE lands when OSV has one.
+		cve := vuln.ID
+		if len(vuln.Aliases) > 0 {
+			cve = vuln.Aliases[0]
 		}
-
-		// Determine severity
-		severity := ""
-		if vul.DatabaseSpecific.Severity != "" {
-			severity = vul.DatabaseSpecific.Severity
-		}
-
 		var cvss []dtos.CVSS
-		if vul.Severity != nil {
-			for _, s := range vul.Severity {
-				cvssResult, err := utils.GetCVSS(s.Score)
-				if err != nil {
-					zlog.S.Warnf("Failed to get CVSS severity and score from: %v, %v", s, err)
-					continue
-				}
-				cvss = append(cvss, dtos.CVSS{
-					Cvss:         s.Score,
-					CvssSeverity: cvssResult.Severity,
-					CvssScore:    cvssResult.Score,
-				})
+		for _, severity := range vuln.Severities {
+			// Not every score is a CVSS vector - 54,565 rows are Ubuntu severities like
+			// "medium". Those are skipped, exactly as they were when the API returned them.
+			parsed, err := utils.GetCVSS(severity.Score)
+			if err != nil {
+				us.s.Warnf("Failed to get CVSS severity and score from %v (%v): %v",
+					severity.Score, severity.Type, err)
+				continue
 			}
+			cvss = append(cvss, dtos.CVSS{
+				Cvss:         severity.Score,
+				CvssSeverity: parsed.Severity,
+				CvssScore:    parsed.Score,
+			})
 		}
-
-		// Map to VulnerabilitiesOutput DTO
-		vulnerabilities = append(vulnerabilities, dtos.VulnerabilitiesOutput{
-			ID:        vul.ID,
+		out = append(out, dtos.VulnerabilitiesOutput{
+			ID:        vuln.ID,
 			Cve:       cve,
-			Summary:   vul.Summary,
-			Severity:  severity,
-			Published: utils.OnlyDate(vul.Published),
-			Modified:  utils.OnlyDate(vul.Modified),
-			Source:    "OSV",
+			Summary:   vuln.Summary,
+			Severity:  vuln.Severity,
+			Published: vuln.Published,
+			Modified:  vuln.Modified,
+			Source:    osvSource,
 			URL:       us.OSVInfoBaseURL + "/" + cve,
 			Cvss:      cvss,
 		})
 	}
-	return vulnerabilities
+	return out
 }
