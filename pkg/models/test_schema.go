@@ -96,4 +96,15 @@ CREATE INDEX idx_ruby_dependencies_purl_name_version ON ruby_dependencies (purl_
 CREATE TABLE epss_data (cve TEXT, epss TEXT, percentile TEXT);
 CREATE INDEX idx_epss_data_cve ON epss_data (cve);
 CREATE INDEX idx_nmci_short_cpe_id ON nvd_match_criteria_ids (short_cpe_id);
+CREATE TABLE osv (
+    id TEXT, ecosystem TEXT, purl TEXT,
+    introduced_version TEXT, last_affected TEXT, fixed_version TEXT,
+    affected_versions TEXT, aliases TEXT,
+    summary TEXT, severity TEXT,
+    published TEXT, modified TEXT, indexed_date TEXT,
+    upstream TEXT, related TEXT
+);
+CREATE INDEX idx_osv_purl ON osv (purl);
+CREATE TABLE osv_severity (id TEXT, type TEXT, score TEXT);
+CREATE INDEX idx_osv_severity_id ON osv_severity (id);
 `
