@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
+## [0.15.0] - 2026-08-14
+### Changed
+- OSV vulnerabilities are read from the `osv` and `osv_severity` tables instead of the `api.osv.dev` HTTP API. The response is unchanged: same fields, same `source`, same URL construction, and the `cvss` array still carries every vector
+- Removed the OSV HTTP client along with `getRepoURL` and the GIT-ecosystem fallback. The table stores `pkg:github` purls directly, so a component is looked up by its purl with no translation to a repository URL and no retry
+- `packageurl-go` is no longer a direct dependency
+- A failed OSV lookup is now reported as `Failed to query OSV data` rather than `No vulnerabilities found`, so a broken query is no longer indistinguishable from a component with no vulnerabilities
+- OSV use case tests no longer reach the network; they run on SQLite against a fixture covering both version-matching mechanisms, multi-vector CVSS and non-CVSS scores
+
+### Added
+- `pkg/models/osv.go`, reading OSV data with one portable query per engine and collapsing the table's per-range rows into one entry per vulnerability
+- `pkg/models/osv_array.go`, parsing the PostgreSQL array literal form of the list columns. 1,082 production rows have a quoted element and some contain a comma, so splitting on commas alone would invent versions
+- `TestOSVParity`, comparing the model against the live OSV API. Skipped unless `PG_DSN` and `OSV_PARITY` are set
+
+### Removed
+- `VULN_OSV_API_BASE_URL`. It is no longer read, and the config no longer rejects an empty value, which used to prevent startup for a setting that did nothing
+
+### Fixed
+- README documented `OSV_ENABLED`, `OSV_API_BASE_URL` and `OSV_VULNERABILITY_INFO_BASE_URL`, none of which match the environment variables the service actually reads
+
+### Deployment
+- Requires the `osv` and `osv_severity` tables. `osv` must carry every OSV `affected` entry, including those whose ranges are of type `ECOSYSTEM` (93% of them); a load that keeps only `SEMVER` ranges silently drops vulnerabilities
+- Known limitation: OSV marks retracted entries with `withdrawn` and the table has no such column, so 43,739 retracted vulnerabilities across 192,159 rows are reported as live. Adding the column is pending
+
 ## [0.14.0] - 2026-08-11
 ### Added
 - SQLite support alongside PostgreSQL: set `DB_DRIVER=sqlite` and `DB_DSN` to a database file

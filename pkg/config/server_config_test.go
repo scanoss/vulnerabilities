@@ -104,9 +104,9 @@ func TestConfigValidation(t *testing.T) {
 				expectError: true,
 			},
 			{
-				name: "invalid with empty OSV API base URL",
+				name: "invalid with empty OSV info base URL",
 				modifyConf: func(c *ServerConfig) {
-					c.Source.OSV.APIBaseURL = ""
+					c.Source.OSV.InfoBaseURL = ""
 				},
 				expectError: true,
 			},
