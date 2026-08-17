@@ -78,3 +78,21 @@ INSERT INTO osv_severity (id, type, score)
 VALUES ('OSV-TEST-0002', 'CVSS_V3', 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H');
 -- Not a CVSS vector: the service must skip it rather than fail, as it did with the API.
 INSERT INTO osv_severity (id, type, score) VALUES ('OSV-TEST-0004', 'Ubuntu', 'medium');
+
+-- Repackager advisory: same purl as the upstream package, but published under a vendor
+-- ecosystem (Vendor:LanguageEcosystem). The service excludes these, so it must never
+-- appear in results. Production has 31,093 such rows across TuxCare:* and Echo:*.
+-- Note the fixed version is a vendor build, unreachable from the upstream registry, and
+-- introduced_version 0 means it would otherwise attach to every version.
+INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_version,
+                 affected_versions, aliases, summary, severity, published, modified, indexed_date)
+VALUES ('CLSA-TEST-0001', 'TuxCare:npm', 'pkg:npm/testosv', '0', '', '9.9.9-tuxcare.1',
+        '{}', '{}', 'TuxCare security update for testosv', 'HIGH',
+        '2026-06-15', '2026-07-20', '2026-07-21');
+-- A distro ecosystem also contains a colon (Ubuntu:22.04:LTS, Debian:12) and must NOT be
+-- filtered: those are legitimate and cover 69% of the table.
+INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_version,
+                 affected_versions, aliases, summary, severity, published, modified, indexed_date)
+VALUES ('UBUNTU-TEST-0001', 'Ubuntu:22.04:LTS', 'pkg:npm/testosv', '0', '', '9.9.9',
+        '{}', '{CVE-2026-7777}', 'distro advisory, must be returned', 'MEDIUM',
+        '2026-06-15', '2026-07-20', '2026-07-21');

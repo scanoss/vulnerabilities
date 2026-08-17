@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	zlog "github.com/scanoss/zap-logging-helper/pkg/logger"
+
 	"scanoss.com/vulnerabilities/pkg/utils"
 )
 
@@ -242,5 +244,39 @@ func TestCollapseOSVRowsPreservesOrder(t *testing.T) {
 		if got[i].ID != want[i] {
 			t.Errorf("entry %d = %q, want %q", i, got[i].ID, want[i])
 		}
+	}
+}
+
+// TestGetVulnsByPurlExcludesRepackagers pins the ecosystem filtering. Repackager
+// advisories (Vendor:LanguageEcosystem, such as TuxCare:npm) sit under the same purl as
+// the upstream package and are excluded; distro ecosystems also contain a colon
+// (Ubuntu:22.04:LTS) and must be kept.
+//
+// This is the test to update if osvRepackagerEcosystems is ever emptied to bring them
+// back. Filtering on "contains a colon" instead would drop 69% of the production table,
+// every Debian and Ubuntu advisory included.
+func TestGetVulnsByPurlExcludesRepackagers(t *testing.T) {
+	db, ctx := newScenarioDB(t)
+	model := NewOSVModel(zlog.S, db)
+
+	vulns, err := model.GetVulnsByPurl(ctx, "pkg:npm/testosv", "1.0.0")
+	if err != nil {
+		t.Fatalf("GetVulnsByPurl() unexpected error: %v", err)
+	}
+	var sawRepackager, sawDistro bool
+	for _, v := range vulns {
+		switch v.ID {
+		case "CLSA-TEST-0001":
+			sawRepackager = true
+		case "UBUNTU-TEST-0001":
+			sawDistro = true
+		}
+	}
+	if sawRepackager {
+		t.Errorf("a TuxCare:npm advisory was returned; repackager ecosystems must be excluded")
+	}
+	if !sawDistro {
+		t.Errorf("the Ubuntu:22.04:LTS advisory was not returned; distro ecosystems contain a " +
+			"colon too and must not be filtered out")
 	}
 }

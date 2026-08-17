@@ -76,6 +76,11 @@ func osvCveNames(vulns []struct {
 }
 
 // TestOSVUseCaseVersionMatching walks the version bounds the scenario encodes.
+//
+// UBUNTU-TEST-0001 appears in every expectation: it spans 0 to 9.9.9, so it covers all
+// of these versions. It is in the fixture to prove distro ecosystems survive the
+// repackager filter, and CLSA-TEST-0001 is absent from every expectation because it does
+// not.
 func TestOSVUseCaseVersionMatching(t *testing.T) {
 	us, ctx := newOSVUseCase(t)
 	tests := []struct {
@@ -85,42 +90,42 @@ func TestOSVUseCaseVersionMatching(t *testing.T) {
 	}{
 		{
 			version: "1.2.0",
-			wantIDs: []string{"OSV-TEST-0001", "OSV-TEST-0003", "OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0001", "OSV-TEST-0003", "OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "inside 1.0.0-2.0.0, inside 0-1.5.0, and inside the open 0-9.9.9",
 		},
 		{
 			version: "2.0.0",
-			wantIDs: []string{"OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "fixed_version 2.0.0 is exclusive, and 2.0.0 is past 1.5.0",
 		},
 		{
 			version: "3.0.1",
-			wantIDs: []string{"OSV-TEST-0002", "OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0002", "OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "3.0.1 is in the explicit affected_versions list",
 		},
 		{
 			version: "3.0.2",
-			wantIDs: []string{"OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "a version list that does not contain it is a miss, not an open range",
 		},
 		{
 			version: "4.1.0",
-			wantIDs: []string{"OSV-TEST-0003", "OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0003", "OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "matches the second range of 0003; 0004 only starts at 4.5.0",
 		},
 		{
 			version: "4.6.0",
-			wantIDs: []string{"OSV-TEST-0004", "OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0004", "OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "inside 4.5.0 to 5.0.0, and past the 4.2.0 fix of 0003's second range",
 		},
 		{
 			version: "5.0.0",
-			wantIDs: []string{"OSV-TEST-0004", "OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0004", "OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "last_affected 5.0.0 is inclusive",
 		},
 		{
 			version: "5.0.1",
-			wantIDs: []string{"OSV-TEST-0005"},
+			wantIDs: []string{"OSV-TEST-0005", "UBUNTU-TEST-0001"},
 			reason:  "past last_affected",
 		},
 	}

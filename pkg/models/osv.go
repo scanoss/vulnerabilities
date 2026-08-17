@@ -73,6 +73,19 @@ type OSVSeverity struct {
 	Score string `db:"score"`
 }
 
+// osvQueryWithArgs builds the lookup, appending one exclusion per repackager ecosystem.
+// Placeholders are neutral and rebound by the driver, so the same builder serves both
+// engines.
+func osvQueryWithArgs(purl string) (string, []interface{}) {
+	query := osvByPurlQuery
+	args := []interface{}{purl}
+	for _, pattern := range osvRepackagerEcosystems {
+		query += "\n  AND o.ecosystem NOT LIKE ?"
+		args = append(args, pattern)
+	}
+	return query + "\nORDER BY o.id", args
+}
+
 // osvRow is one (vulnerability, affected range) pair as stored.
 type osvRow struct {
 	ID                string         `db:"id"`
@@ -86,6 +99,27 @@ type osvRow struct {
 	FixedVersion      string         `db:"fixed_version"`
 	AffectedVersions  string         `db:"affected_versions"`
 }
+
+// Repackager ecosystems, excluded from results. OSV publishes advisories for vendors
+// that rebuild libraries under their own ecosystem name, following the pattern
+// Vendor:LanguageEcosystem - TuxCare:Maven, Echo:npm and so on. Their rows sit under the
+// same purl as the upstream package, so a lookup by purl alone picks them up while the
+// OSV API, which filters by ecosystem, does not return them.
+//
+// They are dropped because their fixed versions are unreachable from the upstream
+// registry (log4j-core "2.22.1-tuxcare.2" does not exist in Maven Central), they carry
+// no aliases tying them to a CVE, and they use introduced_version 0, so they would
+// attach to every version of every affected component.
+//
+// TO RESTORE THEM: empty this list. Nothing else depends on it. Doing so adds 10
+// advisories to pkg:maven/org.apache.logging.log4j/log4j-core, for example, and there is
+// a test pinning the current behaviour that would need updating.
+//
+// Note that the filter must not be "ecosystem contains a colon": legitimate distro
+// ecosystems are versioned that way (Ubuntu:22.04:LTS, Debian:12) and that pattern
+// covers 3,770,300 of 5,480,673 rows - excluding them would drop every Debian and Ubuntu
+// package vulnerability. The repackagers are 31,093 rows, 0.57%.
+var osvRepackagerEcosystems = []string{"TuxCare:%", "Echo:%"}
 
 // osvByPurlQuery returns every stored range for a purl. The CAST on the array columns
 // is what keeps this portable: PostgreSQL renders them as {a,b}, and the SQLite export
@@ -103,8 +137,7 @@ const osvByPurlQuery = `SELECT
 	COALESCE(o.fixed_version, '') AS fixed_version,
 	CAST(o.affected_versions AS TEXT) AS affected_versions
 FROM osv o
-WHERE o.purl = $1
-ORDER BY o.id`
+WHERE o.purl = ?`
 
 // NewOSVModel creates a new instance of the OSV Model.
 func NewOSVModel(s *zap.SugaredLogger, db *sqlx.DB) *OSVModel {
@@ -119,8 +152,9 @@ func (m *OSVModel) GetVulnsByPurl(ctx context.Context, purl string, version stri
 		m.s.Error("Please specify a valid Purl to query")
 		return nil, errors.New("please specify a valid Purl to query")
 	}
+	query, args := osvQueryWithArgs(strings.TrimSpace(purl))
 	var rows []osvRow
-	err := m.db.SelectContext(ctx, &rows, osvByPurlQuery, strings.TrimSpace(purl))
+	err := m.db.SelectContext(ctx, &rows, m.db.Rebind(query), args...)
 	if err != nil {
 		m.s.Errorf("Failed to query the osv table for %v: %v", purl, err)
 		return nil, fmt.Errorf("failed to query the osv table: %v", err)
