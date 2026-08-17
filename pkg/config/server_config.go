@@ -73,10 +73,13 @@ type ServerConfig struct {
 	}
 	Source struct {
 		OSV struct {
-			APIBaseURL  string `env:"VULN_OSV_API_BASE_URL"`
+			// InfoBaseURL builds the URL of each returned vulnerability. There is no API
+			// base URL any more: OSV data is read from the database, not from api.osv.dev.
 			InfoBaseURL string `env:"VULN_OSV_INFO_BASE_URL"`
 			Enabled     bool   `env:"VULN_OSV_SOURCE_ENABLED"`
-			APIWorkers  int    `env:"VULN_OSV_API_WORKERS"`
+			// APIWorkers caps how many components are looked up concurrently. The name is
+			// kept so existing deployments keep their setting.
+			APIWorkers int `env:"VULN_OSV_API_WORKERS"`
 		}
 		SCANOSS struct {
 			Enabled    bool `env:"VULN_SCANOSS_SOURCE_ENABLED"`
@@ -120,7 +123,6 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.Telemetry.Enabled = false
 	cfg.Telemetry.OltpExporter = "0.0.0.0:4317" // Default OTEL OLTP gRPC Exporter endpoint
 	cfg.Components.CommitMissing = false
-	cfg.Source.OSV.APIBaseURL = "https://api.osv.dev/v1"
 	cfg.Source.OSV.InfoBaseURL = "https://osv.dev/vulnerability"
 	cfg.Source.OSV.Enabled = true
 	cfg.Source.OSV.APIWorkers = 5
@@ -136,9 +138,6 @@ func IsValidConfig(cfg *ServerConfig) error {
 
 	// Check OSV source config
 	if cfg.Source.OSV.Enabled {
-		if cfg.Source.OSV.APIBaseURL == "" {
-			return errors.New("OSV API Base URL cannot be empty")
-		}
 		if cfg.Source.OSV.InfoBaseURL == "" {
 			return errors.New("OSV Info  Base URL cannot be empty")
 		}

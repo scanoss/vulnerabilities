@@ -81,6 +81,7 @@ var testDataFiles = []string{
 	"../models/tests/projects.sql",
 	"../models/tests/epss.sql",
 	"../models/tests/vulns_scenario.sql",
+	"../models/tests/osv_scenario.sql",
 }
 
 // LoadTestSchema creates the production schema in the supplied DB. Call this before

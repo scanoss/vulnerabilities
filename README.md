@@ -50,12 +50,17 @@ DB_SSL_MODE=disable
 # DB_DSN=/path/to/vulnerabilities.db
 
 # Vulnerability data sources
-OSV_ENABLED=true                    # Enable/disable OSV (Open Source Vulnerabilities) database
-OSV_API_BASE_URL=https://api.osv.dev/v1
-OSV_VULNERABILITY_INFO_BASE_URL=https://osv.dev/vulnerability
+VULN_OSV_SOURCE_ENABLED=true        # Enable/disable OSV (Open Source Vulnerabilities) data
+VULN_OSV_INFO_BASE_URL=https://osv.dev/vulnerability   # Builds the URL of each vulnerability returned
+VULN_OSV_API_WORKERS=5              # Components looked up concurrently
 
-SCANOSS_ENABLED=true                # Enable/disable SCANOSS vulnerability database
+VULN_SCANOSS_SOURCE_ENABLED=true    # Enable/disable SCANOSS vulnerability data
+VULN_SCANOSS_WORKERS=5              # Components looked up concurrently
 ```
+
+Both vulnerability sources are read from the database. OSV is no longer queried over
+HTTP, so the service needs the `osv` and `osv_severity` tables to be present and
+populated; without them, OSV lookups report no vulnerabilities.
 
 ## Docker Environment
 
