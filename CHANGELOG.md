@@ -8,13 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 - Upcoming changes...
 
-## [0.15.0] - 2026-08-14
+## [0.15.0] - 2026-08-17
 ### Changed
 - OSV vulnerabilities are read from the `osv` and `osv_severity` tables instead of the `api.osv.dev` HTTP API. The response is unchanged: same fields, same `source`, same URL construction, and the `cvss` array still carries every vector
 - Removed the OSV HTTP client along with `getRepoURL` and the GIT-ecosystem fallback. The table stores `pkg:github` purls directly, so a component is looked up by its purl with no translation to a repository URL and no retry
 - `packageurl-go` is no longer a direct dependency
 - A failed OSV lookup is now reported as `Failed to query OSV data` rather than `No vulnerabilities found`, so a broken query is no longer indistinguishable from a component with no vulnerabilities
 - OSV use case tests no longer reach the network; they run on SQLite against a fixture covering both version-matching mechanisms, multi-vector CVSS and non-CVSS scores
+- Advisories published under repackager ecosystems (`TuxCare:Maven`, `Echo:npm` and the like) are excluded. They share the purl of the upstream package, so a lookup by purl alone picked them up while the OSV API, which filters by ecosystem, does not return them. Their fixed versions are unreachable from the upstream registry, they carry no CVE aliases, and their `introduced_version` is `0`, so they attached to every version of every affected component. This brought `pkg:maven/org.apache.logging.log4j/log4j-core@2.0.0` from 18 advisories back to the 8 the API returns. Note the filter is by vendor prefix, not by "ecosystem contains a colon": legitimate distro ecosystems are versioned that way (`Ubuntu:22.04:LTS`, `Debian:12`) and cover 69% of the table
 
 ### Added
 - `pkg/models/osv.go`, reading OSV data with one portable query per engine and collapsing the table's per-range rows into one entry per vulnerability
