@@ -72,13 +72,18 @@ func (m *VulnsForPurlModel) GetVulnsByPurl(ctx context.Context, purl string, ver
 }
 
 // vulnsForPurlQuery returns every CVE reachable from a purl, paired with the version
-// bounds of the match criterion that connects the two. The path through the schema is
-// purl -> short_cpe_purl.cpe_id -> nvd_match_criteria_ids.short_cpe_id ->
-// match_criteria_id -> cves.match_criteria_ids.
+// bounds of the match criterion that connects the two. The path through the serving
+// schema is purl -> short_cpe_purl.short_cpe_id -> nvd_match_criteria.match_criteria_id
+// -> cve_match_criteria -> cve.
 //
-// cves.match_criteria_ids holds a delimited list of criteria ids, so the last join
-// has to test for membership textually. The CAST keeps that working whether the column
-// is TEXT (SQLite) or an array (PostgreSQL), and COALESCE guards the nullable columns.
+// The last hop used to be a substring test against the delimited
+// cves.match_criteria_ids list. Serving normalises that list into the
+// cve_match_criteria bridge table, so the join is now an exact equality: no false
+// matches from one criterion id being a substring of another, and it can use an index.
+//
+// published and modified are DATE columns here rather than the TEXT the mining
+// export used, which OnlyDate already accepts - it scans a time.Time as readily as
+// a string.
 //
 // Version filtering is deliberately absent here; it happens in Go, see version_range.go.
 const vulnsForPurlQuery = `SELECT DISTINCT
@@ -92,9 +97,10 @@ const vulnsForPurlQuery = `SELECT DISTINCT
 	COALESCE(nmci.version_end_including, '') AS version_end_including,
 	COALESCE(nmci.version_end_excluding, '') AS version_end_excluding
 FROM short_cpe_purl scp
-INNER JOIN nvd_match_criteria_ids nmci ON nmci.short_cpe_id = scp.cpe_id
-INNER JOIN cves c ON CAST(c.match_criteria_ids AS TEXT) LIKE '%' || nmci.match_criteria_id || '%'
-WHERE scp.purl = $1
+INNER JOIN nvd_match_criteria nmci ON nmci.short_cpe_id = scp.short_cpe_id
+INNER JOIN cve_match_criteria cmc ON cmc.match_criteria_id = nmci.match_criteria_id
+INNER JOIN cve c ON c.id = cmc.cve_id
+WHERE scp.purl = ?
 ORDER BY c.cve`
 
 // vulnRow is a single (CVE, match criterion) pair returned by vulnsForPurlQuery. One
@@ -120,7 +126,7 @@ func (r vulnRow) bounds() versionBounds {
 // queryVulnRows runs the shared query for the given purl name.
 func (m *VulnsForPurlModel) queryVulnRows(ctx context.Context, purlName string) ([]vulnRow, error) {
 	var rows []vulnRow
-	err := m.db.SelectContext(ctx, &rows, vulnsForPurlQuery, strings.TrimSpace(purlName))
+	err := m.db.SelectContext(ctx, &rows, m.db.Rebind(vulnsForPurlQuery), strings.TrimSpace(purlName))
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return nil, fmt.Errorf("failed to query the table: %v", err)

@@ -18,9 +18,11 @@ package config
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
+	"scanoss.com/vulnerabilities/pkg/db"
 )
 
 const (
@@ -49,7 +51,11 @@ type ServerConfig struct {
 	}
 
 	Database struct {
-		Driver  string `env:"DB_DRIVER"`
+		// Driver selects the serving backend: duckdb (production), sqlite or postgres.
+		Driver string `env:"DB_DRIVER"`
+		// Path is the serving database file, required by the file-based drivers
+		// (duckdb, sqlite) and ignored by postgres.
+		Path    string `env:"DB_PATH"`
 		Host    string `env:"DB_HOST"`
 		User    string `env:"DB_USER"`
 		Passwd  string `env:"DB_PASSWD"`
@@ -112,7 +118,7 @@ func setServerConfigDefaults(cfg *ServerConfig) {
 	cfg.App.RESTPort = defaultRestPort
 	cfg.App.Mode = "dev"
 	cfg.App.Debug = false
-	cfg.Database.Driver = "postgres"
+	cfg.Database.Driver = db.DriverDuckDB
 	cfg.Database.Host = "localhost"
 	cfg.Database.User = "scanoss"
 	cfg.Database.Schema = "scanoss"
@@ -134,6 +140,19 @@ func IsValidConfig(cfg *ServerConfig) error {
 	// Check vulnerability source
 	if !cfg.Source.SCANOSS.Enabled && !cfg.Source.OSV.Enabled {
 		return errors.New("at least one vulnerability source provider (SCANOSS or OSV) must be enabled")
+	}
+
+	// Check the serving database is reachable as configured. The file-based
+	// drivers need a path; postgres builds its DSN from the host settings.
+	switch cfg.Database.Driver {
+	case db.DriverDuckDB, db.DriverSQLite:
+		if cfg.Database.Path == "" {
+			return fmt.Errorf("the %s driver requires a database path (DB_PATH)", cfg.Database.Driver)
+		}
+	case db.DriverPostgres:
+	default:
+		return fmt.Errorf("unsupported database driver %q (expected one of: %s, %s, %s)",
+			cfg.Database.Driver, db.DriverDuckDB, db.DriverSQLite, db.DriverPostgres)
 	}
 
 	// Check OSV source config

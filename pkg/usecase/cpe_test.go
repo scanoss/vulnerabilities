@@ -70,7 +70,7 @@ func TestGetCpeUseCase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load Config: %v", err)
 	}
-	cpeUc := NewCpe(ctx, conn, myConfig, db, s)
+	cpeUc := NewCpe(ctx, myConfig, db, s)
 	cpes, err := cpeUc.GetCpes(components)
 	if err != nil {
 		// The GetCpes method now properly returns errors for problematic data

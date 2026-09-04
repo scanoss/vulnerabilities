@@ -40,12 +40,7 @@ func TestGetVulnsByPurl(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, nil)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -129,12 +124,7 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, nil)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
@@ -149,7 +139,7 @@ func TestGetVulnsByPurlVersion(t *testing.T) {
 	// The model queries through the pool, so the DB itself has to be closed to make the
 	// query fail. Closing conn only returns it to the pool; this assertion used to pass
 	// for the wrong reason, on a query SQLite could not even parse.
-	CloseConn(conn)
+	CloseDB(db)
 	CloseDB(db)
 	_, err = cpeModel.GetVulnsByPurlVersion(ctx, "pkg:github/hapijs/call", "1.0.0")
 	if err == nil {

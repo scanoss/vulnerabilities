@@ -30,37 +30,62 @@ import (
 	myconfig "scanoss.com/vulnerabilities/pkg/config"
 	"scanoss.com/vulnerabilities/pkg/dtos"
 	"scanoss.com/vulnerabilities/pkg/models"
+	"scanoss.com/vulnerabilities/pkg/resolver"
 )
 
+// cpeLookup is what one CPE fallback hop returns.
+type cpeLookup struct {
+	cpes       []string
+	sourcePurl string
+}
+
+// cpesFromSourcePurl retries a component that has no CPEs of its own against the
+// purl its source_purl_id points at.
+func (d CpeUseCase) cpesFromSourcePurl(c compHelper.Component) (cpeLookup, bool) {
+	return resolver.RecoverFromSource(d.ctx, c.Purl, c.Requirement,
+		d.resolver.SourcePurlFor,
+		func(_ context.Context, purl, requirement string) (cpeLookup, error) {
+			found, err := d.cpePurl.GetCpeByPurl(purl, strings.TrimPrefix(requirement, "v"))
+			if err != nil {
+				return cpeLookup{}, err
+			}
+			cpes := make([]string, 0, len(found))
+			for i := range found {
+				cpes = append(cpes, found[i].Cpe)
+			}
+			return cpeLookup{cpes: cpes}, nil
+		},
+		func(r cpeLookup) bool { return len(r.cpes) > 0 },
+		func(r cpeLookup, sourcePurl string) cpeLookup {
+			r.sourcePurl = sourcePurl
+			return r
+		})
+}
+
 type CpeUseCase struct {
-	ctx     context.Context
-	conn    *sqlx.Conn
-	cpePurl *models.CpePurlModel
-	db      *sqlx.DB
-	config  *myconfig.ServerConfig
-	s       *zap.SugaredLogger
+	ctx      context.Context
+	cpePurl  *models.CpePurlModel
+	db       *sqlx.DB
+	config   *myconfig.ServerConfig
+	s        *zap.SugaredLogger
+	resolver *resolver.Resolver
 }
 
 // NewCpe creates a new instance of the vulnerability Use Case.
-func NewCpe(ctx context.Context, conn *sqlx.Conn, config *myconfig.ServerConfig, db *sqlx.DB, s *zap.SugaredLogger) *CpeUseCase {
+func NewCpe(ctx context.Context, config *myconfig.ServerConfig, db *sqlx.DB, s *zap.SugaredLogger) *CpeUseCase {
 	return &CpeUseCase{
-		ctx:     ctx,
-		conn:    conn,
-		cpePurl: models.NewCpePurlModel(ctx, conn),
-		db:      db,
-		config:  config,
-		s:       s,
+		ctx:      ctx,
+		cpePurl:  models.NewCpePurlModel(ctx, db),
+		db:       db,
+		config:   config,
+		s:        s,
+		resolver: resolver.New(s, db),
 	}
 }
 
 func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.CpeComponentOutput, error) {
-	processedComponents := compHelper.GetComponentsVersion(compHelper.ComponentVersionCfg{
-		Ctx:        d.ctx,
-		S:          d.s,
-		DB:         d.db,
-		Input:      componentDTOs,
-		MaxWorkers: d.config.Source.SCANOSS.MaxWorkers,
-	})
+	processedComponents := resolver.ResolveComponents(d.ctx, d.s, d.resolver, componentDTOs,
+		d.config.Source.SCANOSS.MaxWorkers)
 	var validComponents []compHelper.Component
 	var out []dtos.CpeComponentOutput
 	for _, c := range processedComponents {
@@ -112,6 +137,17 @@ func (d CpeUseCase) GetCpes(componentDTOs []compHelper.ComponentDTO) ([]dtos.Cpe
 			item.Cpes = append(item.Cpes, cpePurl[i].Cpe)
 		}
 		if len(item.Cpes) == 0 {
+			// Nothing under this purl: a package that shares its code with an
+			// upstream repository carries no CPEs of its own, so retry there.
+			if recovered, ok := d.cpesFromSourcePurl(c); ok {
+				item.Cpes = recovered.cpes
+				item.ComponentStatus = domain.ComponentStatus{
+					Message:    resolver.SourceFallbackMessage(recovered.sourcePurl),
+					StatusCode: resolver.SourceFallbackStatus,
+				}
+				out = append(out, item)
+				continue
+			}
 			if c.Status.StatusCode == domain.VersionNotFound || c.Status.StatusCode == domain.ComponentNotFound {
 				item.ComponentStatus = c.Status
 			} else {
