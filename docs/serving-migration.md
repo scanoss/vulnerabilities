@@ -189,7 +189,9 @@ declared, 2 had one fewer, and 2 had none (both `pkg:apk/*`, which carry no
 
 Compare per component, or per version only after normalising both sides. The same
 trap applies to any domain keyed by version: crypto, components and licences all
-have it.
+have it. It bit the crypto measurement too - an openssl comparison pinned to one
+version string read 82 against 41; re-measured as the algorithm set across all
+versions it is 102 against 52.
 
 ### What components cost, and what it found
 
@@ -227,9 +229,15 @@ Two findings that will recur:
 
 - **Check the export actually carries the data before rewriting queries.**
   `crypto_algorithm` holds only the 127 SPDX algorithms; mining records 224
-  names, and the 99 missing ones cover 51% of the rows. Compare a real component
-  end to end early - one `SELECT count(DISTINCT ...)` on each side would have
-  caught it before any code was written.
+  names, 125 shared. One `SELECT count(DISTINCT ...)` on each side catches it
+  before any code is written.
+- **Separate "absent" from "collapsed" before calling it data loss.** Of the 99
+  names serving lacks, some are genuinely missing (`hmac`, `ecdsa`, `ecc`, the
+  cipher modes) and some are only coarser: `sha1`/`sha2`/`sha3` all map onto the
+  single `shax` entry, "SHA-x (SHA-1, SHA-256, etc.)", and `chacha20` onto
+  `chacha`. That is 33.7% of mining's rows with no representation and a further
+  17.2% represented less precisely - a materially different claim from the 51%
+  the raw name comparison suggests. Read the SPDX long names before concluding.
 - **A column that exists in mining may be derived in serving.** `strength` was
   stored; now it comes from the SPDX key sizes, and agrees with mining for only
   90 of 125 algorithms. Confirm which answer is wanted before implementing.
