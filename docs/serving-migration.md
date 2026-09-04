@@ -1,8 +1,8 @@
 # Migrating a legacy decoration service to the serving knowledge base
 
-This is the write-up from the pilot migration of `scanoss/vulnerabilities`. It is
-meant to be enough to migrate `cryptography`, `components`, `licenses` and
-`geoprovenance` without rediscovering any of it.
+This is the write-up from migrating `scanoss/vulnerabilities` (the pilot) and
+`scanoss/cryptography`. It is meant to be enough to migrate `components`,
+`licenses` and `geoprovenance` without rediscovering any of it.
 
 The reference implementation throughout is `scanoss/scanoss.api`, which already
 serves every one of these domains from the serving schema.
@@ -54,6 +54,14 @@ Two details worth keeping:
 - **Version selection reproduces `pickOneUrl`.** A bare purl resolves to the
   highest published version, not to "no version". The serving reference leaves it
   empty; the legacy services do not, and their callers depend on the old answer.
+- **An exact version matches with or without a leading `v`.** The mining lookup
+  ran `version_name = $3 OR version_name = $4` with the second spelling from
+  `SemverTogglePrefix`, so a caller asking for `5.4.7` found `v5.4.7`. The
+  resolver answers with the spelling the component publishes. Cryptography has a
+  test that fails without this.
+- **The logger is optional.** Handlers are constructed before any request
+  context exists, so `resolver.New(nil, db)` is allowed; the resolver only logs
+  errors it also returns.
 
 ### 3. Source-purl fallback
 
@@ -73,6 +81,14 @@ components in a scan are clean, so the empty path is the common one.
 
 The papi contracts have no `show_related_results` field, so the fallback is
 always on. If a contract later gains search criteria, gate it there.
+
+**Some services already have a fallback.** Cryptography did, driven by
+`go-component-helper` v0.7.0, which populates `Component.SourcePurl` from the
+mining `projects` table's source-mine columns. There the work is not to add a
+fallback but to re-point it: the resolver fills the same `SourcePurl` field from
+`component.source_purl_id`, and the endpoint code is untouched. Check the
+helper version in `go.mod` before assuming which case you are in - v0.6.0 has no
+`SourcePurl` field at all, v0.7.0 does and also embeds `PurlInfo`.
 
 ## Schema mapping
 
@@ -112,15 +128,39 @@ on all three backends.
 Read the matching `scanoss.api` package first - it is the finished version of the
 queries you are about to write.
 
-| Service | Reference | Mining tables to replace |
-|---|---|---|
-| `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` |
-| `components` | `pkg/components` | `all_urls`, `mines`, `projects` |
-| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` |
-| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` |
+| Service | Reference | Mining tables to replace | State |
+|---|---|---|---|
+| `vulnerabilities` | `pkg/vuln` | `cpes`, `purls`, `versions`, `nvd_match_criteria_ids`, `cves`, `epss_data` | done |
+| `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
+| `components` | `pkg/components` | `all_urls`, `mines`, `projects` | |
+| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | |
+| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
 affected by this migration.
+
+### What cryptography cost, and what it found
+
+The `url_hash` indirection disappears entirely: mining went purl → `all_urls` →
+`package_hash` → `component_crypto`, and serving keys crypto by
+`(purl_id, version)`. That deleted `all_urls.go` and most of the per-endpoint
+plumbing rather than merely rewriting a query.
+
+Two findings that will recur:
+
+- **Check the export actually carries the data before rewriting queries.**
+  `crypto_algorithm` holds only the 127 SPDX algorithms; mining records 224
+  names, and the 99 missing ones cover 51% of the rows. Compare a real component
+  end to end early - one `SELECT count(DISTINCT ...)` on each side would have
+  caught it before any code was written.
+- **A column that exists in mining may be derived in serving.** `strength` was
+  stored; now it comes from the SPDX key sizes, and agrees with mining for only
+  90 of 125 algorithms. Confirm which answer is wanted before implementing.
+
+Where the reference is coarser than the data, prefer the data: `scanoss.api`
+treats crypto as package-level in its versions-in-range endpoint, but
+`component_version_crypto.version` is genuinely per-version (171.5M rows carry a
+concrete version, 16 carry none), so the legacy per-version split is preserved.
 
 ## Testing
 
@@ -130,8 +170,15 @@ serving schema taken from the production file with
 the queries already tolerate: they cast the UUIDs, and `OnlyDate` scans a date
 string as readily as a `time.Time`.
 
-One trap worth knowing. An in-memory SQLite database is **per connection**, so the
-tests cap the pool at one. Nothing may then check a connection out and hold it -
+Two traps worth knowing.
+
+The schema constant is loaded more than once by some tests, so rewrite
+`CREATE TABLE`/`CREATE INDEX` into their `IF NOT EXISTS` form at load time
+(`idempotentDDL`) rather than putting the guard in the constant, which must stay
+a faithful transcription.
+
+And an in-memory SQLite database is **per connection**, so the tests cap the pool
+at one. Nothing may then check a connection out and hold it -
 the model's own queries would wait for it forever. Load fixtures through the pool
 (`LoadTestSQLData(db, ctx, nil)`), never through a checked-out `*sqlx.Conn`. The
 mining-era tests did the opposite, and did not deadlock only because the model

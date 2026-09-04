@@ -58,6 +58,9 @@ func newTestResolver(t *testing.T) *Resolver {
 		`INSERT INTO component_version (purl_id, version) VALUES ('uuid-npm', '2.0.0')`,
 		`INSERT INTO component_version (purl_id, version) VALUES ('uuid-npm', '3.1.0')`,
 		`INSERT INTO component_version (purl_id, version) VALUES ('uuid-github', '3.1.0')`,
+		// A component whose versions carry the "v" prefix, to pin the other direction.
+		`INSERT INTO component (purl, purl_id, source_purl_id) VALUES ('pkg:npm/vtagged', 'uuid-vtagged', NULL)`,
+		`INSERT INTO component_version (purl_id, version) VALUES ('uuid-vtagged', 'v1.0.0')`,
 	}
 	for _, stmt := range stmts {
 		if _, err = db.Exec(stmt); err != nil {
@@ -110,6 +113,18 @@ func TestResolvePinsVersion(t *testing.T) {
 			name:        "version in the purl itself",
 			purl:        "pkg:npm/log4js@1.0.0",
 			wantVersion: "1.0.0", wantStatus: StatusSuccess,
+		},
+		{
+			// A leading "v" is a labelling convention, not part of the version. The
+			// mining lookup matched both spellings and answered with the stored one.
+			name: "v-prefixed request matches the unprefixed version",
+			purl: "pkg:npm/log4js", requirement: "v2.0.0",
+			wantVersion: "2.0.0", wantStatus: StatusSuccess,
+		},
+		{
+			name: "unprefixed request matches a v-prefixed version",
+			purl: "pkg:npm/vtagged", requirement: "1.0.0",
+			wantVersion: "v1.0.0", wantStatus: StatusSuccess,
 		},
 		{
 			name:        "component with no versions",

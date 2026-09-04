@@ -35,6 +35,7 @@ import (
 	"slices"
 	"strings"
 
+	semver "github.com/Masterminds/semver/v3"
 	"github.com/jmoiron/sqlx"
 	purlhelper "github.com/scanoss/go-purl-helper/pkg"
 	"go.uber.org/zap"
@@ -93,7 +94,15 @@ type Resolver struct {
 }
 
 // New builds a Resolver over the serving database handle.
+//
+// A nil logger is accepted and replaced with a no-op: the resolver only logs
+// query failures that it also returns as errors, so a caller that has no logger
+// at construction time (the handlers are built before a request context exists)
+// loses nothing by omitting one.
 func New(s *zap.SugaredLogger, database *sqlx.DB) *Resolver {
+	if s == nil {
+		s = zap.NewNop().Sugar()
+	}
 	return &Resolver{db: database, s: s}
 }
 
@@ -207,7 +216,13 @@ func (r *Resolver) pinVersion(out *Resolved, id Identity, requirement string) {
 	}
 	if len(exact) > 0 {
 		out.Version = exact
-		if !slices.Contains(out.Versions, exact) {
+		// A "v" prefix is a labelling convention, not part of the version: a caller
+		// asking for 5.4.7 means the component's v5.4.7, and vice versa. The mining
+		// lookup matched both spellings, so this does too, and answers with the
+		// spelling the component actually publishes.
+		if stored, ok := matchVersion(out.Versions, exact); ok {
+			out.Version = stored
+		} else {
 			out.StatusCode = StatusVersionNotFound
 		}
 		return
@@ -251,4 +266,33 @@ func (r *Resolver) sourcePurl(ctx context.Context, sourceID sql.NullString) *Sou
 		return &SourcePurl{Purl: comp.Purl, PurlID: comp.PurlID}
 	}
 	return &SourcePurl{Purl: comp.Purl, PurlID: comp.PurlID, PurlName: id.PurlName, PurlType: id.PurlType}
+}
+
+// matchVersion finds a version in the set, accepting the other spelling of a
+// leading "v", and returns it as the component publishes it.
+func matchVersion(versions []string, wanted string) (string, bool) {
+	if slices.Contains(versions, wanted) {
+		return wanted, true
+	}
+	toggled := toggleVersionPrefix(wanted)
+	if toggled != wanted && slices.Contains(versions, toggled) {
+		return toggled, true
+	}
+	return "", false
+}
+
+// toggleVersionPrefix adds a leading "v" to a version that has none and removes
+// it from one that has it. A value that is not a version is returned unchanged.
+// Mirrors go-models' SemverTogglePrefix, which the mining lookup used.
+func toggleVersionPrefix(version string) string {
+	if len(version) == 0 {
+		return version
+	}
+	if _, err := semver.NewVersion(version); err != nil {
+		return version
+	}
+	if version[0] != 'v' {
+		return "v" + version
+	}
+	return strings.TrimLeft(version, "v")
 }
