@@ -1,8 +1,8 @@
 # Migrating a legacy decoration service to the serving knowledge base
 
 This is the write-up from migrating `scanoss/vulnerabilities` (the pilot),
-`scanoss/cryptography` and `scanoss/components`. It is meant to be enough to
-migrate `licenses` and `geoprovenance` without rediscovering any of it.
+`scanoss/cryptography`, `scanoss/components` and `scanoss/licenses`. It is meant
+to be enough to migrate `geoprovenance` without rediscovering any of it.
 
 The reference implementation throughout is `scanoss/scanoss.api`, which already
 serves every one of these domains from the serving schema.
@@ -82,6 +82,15 @@ components in a scan are clean, so the empty path is the common one.
 The papi contracts have no `show_related_results` field, so the fallback is
 always on. If a contract later gains search criteria, gate it there.
 
+**Check the papi interface embed while you are in there.** Every legacy service
+embeds the papi server *interface* rather than the generated
+`Unimplemented*Server` struct. The interface value is nil, so any method the
+service does not implement panics and takes the process down. It was reachable in
+`components` (`GetComponentStatistics`) and `licenses` (`Echo`,
+`GetObligations`), and latent in the other two. All four are fixed with a test
+pinning the embed; check `geoprovenance` the same way - compare the papi
+interface's method set against what the service implements.
+
 **Some services already have a fallback.** Cryptography did, driven by
 `go-component-helper` v0.7.0, which populates `Component.SourcePurl` from the
 mining `projects` table's source-mine columns. There the work is not to add a
@@ -118,6 +127,8 @@ delimited list into a bridge table.
 | Purl type filter | `mines.purl_type = ?` | `purl LIKE 'pkg:<type>/%'` |
 | Licence is SPDX | `licenses.is_spdx` flag | membership in `"SPDX_license_data"` |
 | DB version | `db_version.created_at` | `db_version.db_release` (no `created_at`) |
+| Licences per release | `purl_licenses` (by purl string) | `component_version_license` (by `purl_id`) |
+| OSADL lists | array columns on `osadl` | `"OSADL_compat"` / `"OSADL_incompat"` / `"OSADL_depending"` |
 | URLs | `all_urls` | `component_version_url` |
 
 Mixed-case serving tables (`SPDX_license_data`, `OSADL*`, `SPDX_crypto_algorithm`)
@@ -137,11 +148,35 @@ queries you are about to write.
 | `vulnerabilities` | `pkg/vuln` | `cpes`, `purls`, `versions`, `nvd_match_criteria_ids`, `cves`, `epss_data` | done |
 | `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
 | `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
-| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | |
+| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done, blocked on the export (see below) |
 | `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
 affected by this migration.
+
+### What licenses cost, and what it found
+
+The mapping is mechanical - `purl_licenses` to `component_version_license` by
+`purl_id`, the SPDX registry renamed, `is_spdx` derived from registry membership
+- with one structural change: OSADL's three compatibility lists were array
+columns and are now three tables, so they are read separately and reassembled.
+
+Three things to expect:
+
+- **The export carries only the declared licence.**
+  `component_version_license.source` is `0` on all 205M rows, while mining spread
+  374M rows across eight sources. The service's whole licence-priority mechanism
+  rests on that column. On 40 random `(purl, version)` pairs with licences in
+  mining, 18 had any in serving and 22 had none. The filtering was kept as
+  written rather than removed, so the code is correct once the export catches up.
+- **go-models reaches for mining tables here too**, in two places: the licence
+  catalogue (`licenses`) and the SPDX registry (`spdx_license_data`). Reuse its
+  result types and swap only where they read from, and the SPDX cache needs no
+  changes beyond its constructor.
+- **`pq.StringArray` fallbacks must be `'{}'`, not `''`.** `see_also` is a
+  Postgres array literal in a text column, which the array scanners parse - but
+  they cannot parse the empty string, so `COALESCE(col, '')` turns a NULL into a
+  scan error.
 
 ### What components cost, and what it found
 
