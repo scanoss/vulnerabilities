@@ -148,7 +148,7 @@ queries you are about to write.
 | `vulnerabilities` | `pkg/vuln` | `cpes`, `purls`, `versions`, `nvd_match_criteria_ids`, `cves`, `epss_data` | done |
 | `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
 | `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
-| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done, blocked on the export (see below) |
+| `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done |
 | `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
@@ -163,12 +163,11 @@ columns and are now three tables, so they are read separately and reassembled.
 
 Three things to expect:
 
-- **The export carries only the declared licence.**
-  `component_version_license.source` is `0` on all 205M rows, while mining spread
-  374M rows across eight sources. The service's whole licence-priority mechanism
-  rests on that column. On 40 random `(purl, version)` pairs with licences in
-  mining, 18 had any in serving and 22 had none. The filtering was kept as
-  written rather than removed, so the code is correct once the export catches up.
+- **Serving carries the declared licence only**, by design: the detected licences
+  mining kept under sources 3/5/31/33/34 are out of scope, so
+  `component_version_license.source` is `0` on all 205M rows and the priority
+  resolution settles there. The filtering was kept as written rather than
+  removed, so nothing has to be reintroduced if that changes.
 - **go-models reaches for mining tables here too**, in two places: the licence
   catalogue (`licenses`) and the SPDX registry (`spdx_license_data`). Reuse its
   result types and swap only where they read from, and the SPDX cache needs no
@@ -177,6 +176,20 @@ Three things to expect:
   Postgres array literal in a text column, which the array scanners parse - but
   they cannot parse the empty string, so `COALESCE(col, '')` turns a NULL into a
   scan error.
+
+**Never compare the two schemas by joining on the version string.** This cost a
+false alarm here: a first pass joined mining and serving on `(purl, version)` and
+reported 22 of 40 releases as having lost their licences. They had not. Serving
+normalises version strings - mining's `v0.1.1` is `0.1.1`, and tag-shaped
+versions (`datahub-0.2.188`, `node-http2-0.0.6`, `OpenSSL_1_1_1a`) are rewritten
+entirely - so the join missed rows that were plainly there. Re-measured per
+component, 36 of 40 had at least as many licensed versions in serving as mining
+declared, 2 had one fewer, and 2 had none (both `pkg:apk/*`, which carry no
+`component_version` rows at all).
+
+Compare per component, or per version only after normalising both sides. The same
+trap applies to any domain keyed by version: crypto, components and licences all
+have it.
 
 ### What components cost, and what it found
 
