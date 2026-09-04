@@ -1,8 +1,8 @@
 # Migrating a legacy decoration service to the serving knowledge base
 
-This is the write-up from migrating `scanoss/vulnerabilities` (the pilot) and
-`scanoss/cryptography`. It is meant to be enough to migrate `components`,
-`licenses` and `geoprovenance` without rediscovering any of it.
+This is the write-up from migrating `scanoss/vulnerabilities` (the pilot),
+`scanoss/cryptography` and `scanoss/components`. It is meant to be enough to
+migrate `licenses` and `geoprovenance` without rediscovering any of it.
 
 The reference implementation throughout is `scanoss/scanoss.api`, which already
 serves every one of these domains from the serving schema.
@@ -114,6 +114,10 @@ delimited list into a bridge table.
 | Crypto | `component_crypto`, `crypto_libraries` | `component_version_crypto`, `component_version_crypto_library`, `crypto_algorithm`, `crypto_library` |
 | Geo | `vendors`, `vendor_locations`, `github_contributors`, `countries` | `vendor_location`, `contribution`, `country` |
 | Component status | `projects.status` | `component_status`, `component_version_status` |
+| Popularity / ranking | `projects.git_stars`, `git_forks`, … | `component_metrics` |
+| Purl type filter | `mines.purl_type = ?` | `purl LIKE 'pkg:<type>/%'` |
+| Licence is SPDX | `licenses.is_spdx` flag | membership in `"SPDX_license_data"` |
+| DB version | `db_version.created_at` | `db_version.db_release` (no `created_at`) |
 | URLs | `all_urls` | `component_version_url` |
 
 Mixed-case serving tables (`SPDX_license_data`, `OSADL*`, `SPDX_crypto_algorithm`)
@@ -132,12 +136,37 @@ queries you are about to write.
 |---|---|---|---|
 | `vulnerabilities` | `pkg/vuln` | `cpes`, `purls`, `versions`, `nvd_match_criteria_ids`, `cves`, `epss_data` | done |
 | `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
-| `components` | `pkg/components` | `all_urls`, `mines`, `projects` | |
+| `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
 | `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | |
 | `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
 affected by this migration.
+
+### What components cost, and what it found
+
+The three concerns map cleanly - search to `component` + `component_metrics`,
+versions to `component_version`, status to `component_status` /
+`component_version_status` - and the reference's `pkg/components/serving.go` has
+the search pass-by-pass, so copy its plan rather than re-deriving it.
+
+The volume check paid off immediately and cost minutes: `component` covers 98.6%
+of `projects`, `component_metrics` covers *more* components than mining had
+`git_stars` for, and a 40-component sample matched on version counts 37 times.
+No blocker, and knowing that up front made the rest routine.
+
+Two things to watch for:
+
+- **go-models' `DBVersionModel` does not work against serving.** It selects
+  `db_version.created_at`, which serving's `db_version` does not have, so the
+  query fails and `/status` quietly stops reporting the knowledge base version.
+  Serving carries `db_release` instead, a `YY.MM.DD.HH.MM` build stamp.
+- **Check what the existing tests actually assert before trusting them.** Two
+  components tests asserted that a search found nothing, which was true only
+  because `RunQueries` abandons the batch on the first failing pass and the
+  caller discarded the error. Migrating fixed the search, and the tests failed.
+  A test asserting an absence is worth verifying against the fixture before
+  concluding your change broke it.
 
 ### What cryptography cost, and what it found
 
