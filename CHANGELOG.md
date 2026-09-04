@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Hardened against an unimplemented method killing the server.** The service embedded the papi `VulnerabilitiesServer` *interface* rather than the generated `UnimplementedVulnerabilitiesServer`. The interface value is nil, so any method the service does not implement would dereference it and panic, taking the whole process down. Every method of the current papi interface is implemented, so nothing reaches it today - but the first method papi adds would, silently, as a remotely reachable crash. scanoss/components shipped exactly that: `GetComponentStatistics` arrived in papi v0.42.0, was never implemented, and one unauthenticated request killed the server
+
 ### Changed
 - **The service now reads the serving knowledge base instead of the mining database.** The mining path is gone; there is no configuration that selects it. Endpoint routes and response shapes are unchanged
 - CPE lookups read `cpe ⋈ short_cpe_purl` by purl string. The serving schema denormalises the version onto the `cpe` row, so the hops through `purls` and `versions` the mining query needed are gone
