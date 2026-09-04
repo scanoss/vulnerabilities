@@ -1,8 +1,9 @@
 # Migrating a legacy decoration service to the serving knowledge base
 
-This is the write-up from migrating `scanoss/vulnerabilities` (the pilot),
-`scanoss/cryptography`, `scanoss/components` and `scanoss/licenses`. It is meant
-to be enough to migrate `geoprovenance` without rediscovering any of it.
+This is the write-up from migrating all five legacy decoration services:
+`scanoss/vulnerabilities` (the pilot), `cryptography`, `components`, `licenses`
+and `geoprovenance`. It records what the serving schema maps onto, what it does
+not carry, and the measurement traps that produced two false alarms along the way.
 
 The reference implementation throughout is `scanoss/scanoss.api`, which already
 serves every one of these domains from the serving schema.
@@ -122,6 +123,8 @@ delimited list into a bridge table.
 | OSADL | `osadl` | `"OSADL"`, `"OSADL_compat"`, `"OSADL_incompat"`, `"OSADL_depending"` |
 | Crypto | `component_crypto`, `crypto_libraries` | `component_version_crypto`, `component_version_crypto_library`, `crypto_algorithm`, `crypto_library` |
 | Geo | `vendors`, `vendor_locations`, `github_contributors`, `countries` | `vendor_location`, `contribution`, `country` |
+| Contributor country | `timezone_based_country` (ISO code) | `country.name` via `country_id` (full name) |
+| Declared location | `vendor_locations.declared_location` | none |
 | Component status | `projects.status` | `component_status`, `component_version_status` |
 | Popularity / ranking | `projects.git_stars`, `git_forks`, … | `component_metrics` |
 | Purl type filter | `mines.purl_type = ?` | `purl LIKE 'pkg:<type>/%'` |
@@ -149,10 +152,33 @@ queries you are about to write.
 | `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
 | `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
 | `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done |
-| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | |
+| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | done, blocked on the export (see below) |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
 affected by this migration.
+
+### What geoprovenance cost, and what it found
+
+Four mining tables collapse into three serving ones, and the lookup keys on
+`purl_id`. `contribution` covers 99.9% of `github_contributors` and the curated
+country coverage is complete (256,731 serving rows against 256,410 mining vendors
+with one; `curated_countries_ids` never held more than one country, so collapsing
+it to a single `country_id` loses nothing).
+
+What the schema does not carry is the interesting part:
+
+- **`declared_location` and the vendor type**, so `declared_locations` is always
+  empty. 1.8M vendors have a declared location in mining.
+- **`timezone_based_country`**, which is what `origin` was computed from. Serving
+  has only the curated country. They agree on 99.1% of the vendors that have
+  both, so the answers are consistent - but mining had a timezone country for
+  2.3M vendors and a curated one for 256k, so **14 of 21 sampled components stop
+  resolving to an origin at all**. Coverage, not correctness.
+- **`too_many_contributors`**, so that status disappears.
+
+Watch the value format, not just the column: mining's `timezone_based_country`
+holds ISO codes (`DE`), while `country.name` holds full names (`Germany`). The
+same endpoint changes its output format without any query looking wrong.
 
 ### What licenses cost, and what it found
 
@@ -263,7 +289,9 @@ The schema constant is loaded more than once by some tests, so rewrite
 a faithful transcription.
 
 And an in-memory SQLite database is **per connection**, so the tests cap the pool
-at one. Nothing may then check a connection out and hold it -
+at one. Nothing may then check a connection out and hold it - four tests across
+two services did, and only worked because their queries went through the very
+connection they held. When you re-point a model at the pool, those deadlock. Nothing may then check a connection out and hold it -
 the model's own queries would wait for it forever. Load fixtures through the pool
 (`LoadTestSQLData(db, ctx, nil)`), never through a checked-out `*sqlx.Conn`. The
 mining-era tests did the opposite, and did not deadlock only because the model
