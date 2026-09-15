@@ -33,7 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deployment
 - **Breaking:** requires a serving knowledge base. Point `DB_PATH` at the `.duckdb` file and set `DB_DRIVER=duckdb`
-- Verified against the production serving file (55.7 GiB): both endpoints, batch and single, with the source-purl fallback. Point lookups run in 2-35 ms
+- Verified against the production serving file (72.6 GiB): both endpoints, batch and single, with the source-purl fallback. Point lookups run in 2-35 ms
+- **Re-checked against the updated export.** Every table this service reads - `short_cpe_purl`, `nvd_match_criteria`, `cve_match_criteria`, `cve`, `osv`, `osv_severity`, `epss`, `component`, `component_version` - is column-for-column what it was, and the queries return data unchanged. The update adds a `short_cpe` table (200,459 rows), which this service does not need: `short_cpe_purl` already carries the `short_cpe` string. `osv` still has no `withdrawn` column, so the retracted-vulnerability limitation above stands
 - CVE parity with the mining queries checked over a random sample of 100 purls: 525 `(purl, CVE)` pairs on both sides, none lost, none gained
 - The DuckDB Go driver embeds engine v1.4.1 and reads a file written by the v1.5.5 CLI, because the file is stored at `storage_compatibility_version = v0.10.2`
 - `make build_arm` now cross-compiles with cgo and needs an `aarch64` toolchain (set `CC`); the amd64 build is unaffected
