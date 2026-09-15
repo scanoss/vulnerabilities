@@ -121,7 +121,7 @@ delimited list into a bridge table.
 | Licenses | `licenses`, `purl_licenses` | `license`, `component_version_license` |
 | SPDX | `spdx_license_data` | `"SPDX_license_data"` |
 | OSADL | `osadl` | `"OSADL"`, `"OSADL_compat"`, `"OSADL_incompat"`, `"OSADL_depending"` |
-| Crypto | `component_crypto`, `crypto_libraries` | `component_version_crypto`, `component_version_crypto_library`, `crypto_algorithm`, `crypto_library` |
+| Crypto | `component_has_crypto`, `crypto_algorithm`, `crypto_libraries` | `component_version_crypto`, `component_version_crypto_library`, `crypto_algorithm`, `crypto_library` |
 | Geo | `vendors`, `vendor_locations`, `github_contributors`, `countries` | `vendor_location`, `contribution`, `country` |
 | Contributor country | `timezone_based_country` (ISO code) | `country.name` via `country_id` (full name) |
 | Declared location | `vendor_locations.declared_location` | none |
@@ -149,7 +149,7 @@ queries you are about to write.
 | Service | Reference | Mining tables to replace | State |
 |---|---|---|---|
 | `vulnerabilities` | `pkg/vuln` | `cpes`, `purls`, `versions`, `nvd_match_criteria_ids`, `cves`, `epss_data` | done |
-| `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done, blocked on the export (see below) |
+| `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done |
 | `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
 | `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done |
 | `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | done, blocked on the export (see below) |
@@ -202,6 +202,14 @@ Three things to expect:
   Postgres array literal in a text column, which the array scanners parse - but
   they cannot parse the empty string, so `COALESCE(col, '')` turns a NULL into a
   scan error.
+- **Two tables can hold the same domain at different grains.** The export has
+  both `component_version_license` (per release, 22.8M components) and
+  `component_license` (per component, all 31.8M). Reading only the first leaves
+  8.9M components - 28% - answered as having no licence when one is on record.
+  The lookups fall to the second only when no release has a licence, and its rows
+  carry an empty version, because stamping the requested version onto a licence
+  the database does not attribute to a release invents an attribution. Count
+  `DISTINCT purl_id` on every table in a domain, not just the obvious one.
 
 **Never compare the two schemas by joining on the version string.** This cost a
 false alarm here: a first pass joined mining and serving on `(purl, version)` and
@@ -216,8 +224,8 @@ declared, 2 had one fewer, and 2 had none (both `pkg:apk/*`, which carry no
 Compare per component, or per version only after normalising both sides. The same
 trap applies to any domain keyed by version: crypto, components and licences all
 have it. It bit the crypto measurement too - an openssl comparison pinned to one
-version string read 82 against 41; re-measured as the algorithm set across all
-versions it is 102 against 52.
+version string read 82 against 41 - though that measurement was wrong for a
+second reason as well; see the cryptography section.
 
 ### What components cost, and what it found
 
@@ -251,27 +259,43 @@ The `url_hash` indirection disappears entirely: mining went purl → `all_urls` 
 `(purl_id, version)`. That deleted `all_urls.go` and most of the per-endpoint
 plumbing rather than merely rewriting a query.
 
-Two findings that will recur:
+Three findings that will recur:
 
-- **Check the export actually carries the data before rewriting queries.**
-  `crypto_algorithm` holds only the 127 SPDX algorithms; mining records 224
-  names, 125 shared. One `SELECT count(DISTINCT ...)` on each side catches it
-  before any code is written.
-- **Separate "absent" from "collapsed" before calling it data loss.** Of the 99
-  names serving lacks, some are genuinely missing (`hmac`, `ecdsa`, `ecc`, the
-  cipher modes) and some are only coarser: `sha1`/`sha2`/`sha3` all map onto the
-  single `shax` entry, "SHA-x (SHA-1, SHA-256, etc.)", and `chacha20` onto
-  `chacha`. That is 33.7% of mining's rows with no representation and a further
-  17.2% represented less precisely - a materially different claim from the 51%
-  the raw name comparison suggests. Read the SPDX long names before concluding.
-- **A column that exists in mining may be derived in serving.** `strength` was
-  stored; now it comes from the SPDX key sizes, and agrees with mining for only
-  90 of 125 algorithms. Confirm which answer is wanted before implementing.
+- **Check which mining table the export is actually a copy of.** This branch
+  recorded a blocker - "33.7% of rows unrepresented, a further 17.2% collapsed
+  into `shax`/`chacha`" - that was not real. It compared serving against mining's
+  `component_crypto(url_hash, algorithm_name, strength)`, a table mining had
+  itself superseded with `component_has_crypto` + `crypto_algorithm`. The export
+  mirrors the *current* model: 219 algorithms, 18 tags, 659 tag assignments, with
+  identifiers identical on both sides. Measured against what mining runs, 5 of
+  224 names are absent, all legacy spellings, 0.46% of rows. Before declaring an
+  export gap, list the mining tables in the domain and check which one the export
+  resembles - `\dt *crypto*` would have shown three newer tables next to the one
+  being compared.
+- **Verify the join key on a sample before trusting a count of zero.**
+  `component_has_crypto.url_hash` joins to `all_urls.package_hash`, not
+  `all_urls.url_hash`, despite the column name. Every comparison built on the
+  obvious key returned nothing, which reads as "this component has no crypto"
+  rather than "this join is wrong". A join that returns zero rows for a component
+  you know has data is a broken join, not a finding.
+- **A schema update can change a column's meaning without changing its name.**
+  `crypto_algorithm` went from `(id, name)`, short name in `name`, to
+  `(id, name, category, strength, spdx_id)`, short name in `id` and a long
+  description in `name`. Both are non-empty strings, so a query selecting `name`
+  keeps working and starts returning "Advanced Encryption Standard" where the API
+  contract wants "aes". Nothing fails; the answers are just wrong. Assert on a
+  known value in a test, not merely on a non-empty result.
+
+The same update turned `strength` from derived back into stored. An earlier
+revision computed it from the SPDX key sizes because the export had no such
+column; it has one now, matching mining exactly, where the derivation resolved
+for 118 of 219 algorithms and disagreed where it did (`aes` "256" against
+"128-256"). Prefer the stored column when one appears.
 
 Where the reference is coarser than the data, prefer the data: `scanoss.api`
 treats crypto as package-level in its versions-in-range endpoint, but
-`component_version_crypto.version` is genuinely per-version (171.5M rows carry a
-concrete version, 16 carry none), so the legacy per-version split is preserved.
+`component_version_crypto.version` is genuinely per-version (216.2M rows carry a
+concrete version), so the legacy per-version split is preserved.
 
 ## Testing
 
