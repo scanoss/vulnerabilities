@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version selection is unchanged in behaviour: an exact version must be published by the component, a semver range selects the highest version satisfying it, and a bare purl still resolves to the highest published version
 - Binaries are built with `CGO_ENABLED=1`. The DuckDB driver is a cgo binding, so a pure-Go build can no longer be produced
 - The runtime image moved to `debian:bookworm-slim` with `libstdc++6`, which the cgo binary links against. `debian:buster` has been end-of-life since 2024
+- **Chainguard, Wolfi and MinimOS advisories are excluded unless the purl is an apk package.** The export also files them under the upstream repository's purl (344k rows under `pkg:github`), where they fix at apk releases and carry vendor ids with no CVE alias: `pkg:github/openssl/openssl@3.0.0` drew 573 of them on top of 92 upstream advisories
+- A source link that points back at the component itself (11.4 of 13.9 million) is no longer followed. It cost an unindexed full scan of `component`, about 2.5 s of CPU, for a fallback that could only repeat the lookup
 
 ### Added
 - **DuckDB support**, the intended production backend for the serving knowledge base. Set `DB_DRIVER=duckdb` and `DB_PATH` to the serving file, which is opened read-only
@@ -38,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CVE parity with the mining queries checked over a random sample of 100 purls: 525 `(purl, CVE)` pairs on both sides, none lost, none gained
 - The DuckDB Go driver embeds engine v1.4.1 and reads a file written by the v1.5.5 CLI, because the file is stored at `storage_compatibility_version = v0.10.2`
 - `make build_arm` now cross-compiles with cgo and needs an `aarch64` toolchain (set `CC`); the amd64 build is unaffected
+
+### Fixed
+- **Scoped npm packages, and other purls the export stores encoded or with qualifiers, resolve again.** `component.purl` keeps scoped npm and jsr names percent-encoded (`pkg:npm/%40angular/core`), qualifiers on generic, conda and cran keys, and a raw `+` in some rpm and deb names. The resolver decoded the purl and rebuilt the key, so 1.96 million components (6%) - plus 1.6 million qualified ones - answered `COMPONENT_NOT_FOUND` however they were spelled. It now tries the caller's spelling, the canonical rendering and the decoded form in one indexed lookup
+- **Scoped purls match in the OSV and CPE lookups.** `PurlRemoveFromVersionComponent` cut at the first `@`, reducing `pkg:npm/@scope/name` to `pkg:npm/`; and `osv` always encodes the scope while `short_cpe_purl` holds it both ways. Both spellings are now matched
+- An empty or malformed request answers HTTP 400 instead of 500 "internal server error"
 
 ## [0.15.0] - 2026-08-17
 ### Changed
