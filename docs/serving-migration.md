@@ -10,7 +10,8 @@ serves every one of these domains from the serving schema.
 
 ## What "serving" is
 
-One DuckDB file (production: `d4:/data/QUIQUE/full.duckdb`, 55.7 GiB, 34 tables)
+One DuckDB file (latest full export: `d3:/data/QUIQUE/full_2026101605.duckdb`,
+75.4 GB, 36 tables, `db_release 26.10.16.05.14`)
 holding a normalised, singular-named schema. It replaces the mining PostgreSQL
 database (`psql service=m00`, database `components`), whose tables are plural and
 heavily denormalised through surrogate id columns.
@@ -60,6 +61,20 @@ Two details worth keeping:
   `SemverTogglePrefix`, so a caller asking for `5.4.7` found `v5.4.7`. The
   resolver answers with the spelling the component publishes. Cryptography has a
   test that fails without this.
+- **Look the key up in every spelling the export stores.** `component.purl` is
+  not canonical: scoped npm and jsr packages are percent-encoded
+  (`pkg:npm/%40angular/core`), generic, conda and cran components keep their
+  qualifiers in the key (`pkg:generic/x?repository_url=...`), and some rpm and deb
+  names carry a raw `+` where the canonical form writes `%2B`. Parsing the purl
+  and rebuilding it from its decoded parts matches none of them - 1.96M
+  components (6%) answered `COMPONENT_NOT_FOUND` however the caller wrote them.
+  `purl_key.go` tries the caller's spelling, the canonical rendering and the
+  decoded form in one `IN` query, which still uses the `component(purl)` index.
+  The tables keyed by purl string have the same problem: `osv` always encodes the
+  scope, `short_cpe_purl` holds it both ways (`utils.PurlSpellings`).
+- **A source link that points back at the component is no source.** 11.4M of the
+  13.9M `source_purl_id` links name the component itself; following one is a full
+  scan for nothing (see Performance).
 - **The logger is optional.** Handlers are constructed before any request
   context exists, so `resolver.New(nil, db)` is allowed; the resolver only logs
   errors it also returns.
@@ -122,9 +137,11 @@ delimited list into a bridge table.
 | SPDX | `spdx_license_data` | `"SPDX_license_data"` |
 | OSADL | `osadl` | `"OSADL"`, `"OSADL_compat"`, `"OSADL_incompat"`, `"OSADL_depending"` |
 | Crypto | `component_has_crypto`, `crypto_algorithm`, `crypto_libraries` | `component_version_crypto`, `component_version_crypto_library`, `crypto_algorithm`, `crypto_library` |
-| Geo | `vendors`, `vendor_locations`, `github_contributors`, `countries` | `vendor_location`, `contribution`, `country` |
-| Contributor country | `timezone_based_country` (ISO code) | `country.name` via `country_id` (full name) |
-| Declared location | `vendor_locations.declared_location` | none |
+| Geo | `vendors`, `vendor_locations`, `github_contributors`, `countries` | `vendor`, `vendor_location`, `vendor_location_declared`, `contribution`, `country` |
+| Contributor country (origin) | `vendor_locations.timezone_based_country` (ISO code) | `vendor_location_declared.timezone_country` (ISO code) |
+| Curated country | `vendor_locations.curated_countries_ids` | `vendor_location.country_id` → `country.name` (full name) |
+| Declared location | `vendor_locations.declared_location` | `vendor_location_declared.declared_location` |
+| Too many contributors | `too_many_contributors.purl_name` | `too_many_contributors.purl_id` |
 | Component status | `projects.status` | `component_status`, `component_version_status` |
 | Popularity / ranking | `projects.git_stars`, `git_forks`, … | `component_metrics` |
 | Purl type filter | `mines.purl_type = ?` | `purl LIKE 'pkg:<type>/%'` |
@@ -152,7 +169,7 @@ queries you are about to write.
 | `cryptography` | `pkg/crypto` | `component_crypto`, `crypto_libraries`, `all_urls`, `mines`, `versions` | done |
 | `components` | `pkg/components` | `all_urls`, `mines`, `projects` | done |
 | `licenses` | `pkg/license` | `licenses`, `purl_licenses`, `osadl`, `spdx_license_data`, `ldb_component_licenses` | done |
-| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | done, blocked on the export (see below) |
+| `geoprovenance` | `pkg/geo` | `vendors`, `vendor_locations`, `github_contributors`, `countries`, `versions` | done |
 
 `licenses` also reads the LDB for evidence, which is a separate store and not
 affected by this migration.
@@ -165,20 +182,23 @@ country coverage is complete (256,731 serving rows against 256,410 mining vendor
 with one; `curated_countries_ids` never held more than one country, so collapsing
 it to a single `country_id` loses nothing).
 
-What the schema does not carry is the interesting part:
+Earlier exports carried only the curated country, so `origin` had to be computed
+from it and `declared_locations` stayed empty. **Since the 2026-09-23 export that
+gap is closed**: `vendor_location_declared` holds the declared location and the
+timezone-inferred country (`timezone_country` for 2,305,059 vendors, the same count
+mining had), `vendor` the login, type and mine, and `too_many_contributors` is back.
+The service reads all three, with mining's semantics:
 
-- **`declared_location` and the vendor type**, so `declared_locations` is always
-  empty. 1.8M vendors have a declared location in mining.
-- **`timezone_based_country`**, which is what `origin` was computed from. Serving
-  has only the curated country. They agree on 99.1% of the vendors that have
-  both, so the answers are consistent - but mining had a timezone country for
-  2.3M vendors and a curated one for 256k, so **14 of 21 sampled components stop
-  resolving to an origin at all**. Coverage, not correctness.
-- **`too_many_contributors`**, so that status disappears.
+- `origin` is the timezone-inferred distribution. The curated set covers ~256k
+  vendors against ~2.2M with a timezone country; computed from the curated one,
+  14 of 21 sampled components lost their origin altogether.
+- `countries` returns the declared locations with mining's filters (a typed
+  vendor, the GitHub mine, a non-empty location), plus the curated counts.
+- Both report `TOO_MANY_CONTRIBUTORS` for listed components.
 
-Watch the value format, not just the column: mining's `timezone_based_country`
-holds ISO codes (`DE`), while `country.name` holds full names (`Germany`). The
-same endpoint changes its output format without any query looking wrong.
+Watch the value format, not just the column: `timezone_country` holds ISO codes
+(`DE`), while `country.name` holds full names (`Germany`). Switching between the
+two changes an endpoint's output format without any query looking wrong.
 
 ### What licenses cost, and what it found
 
@@ -210,6 +230,11 @@ Three things to expect:
   carry an empty version, because stamping the requested version onto a licence
   the database does not attribute to a release invents an attribution. Count
   `DISTINCT purl_id` on every table in a domain, not just the obvious one.
+  **The 2026-10-16 export dropped `component_license`.** Every component with a
+  version now has `component_version_license` rows, so only the ~9M components
+  with no versions lose a licence. The model probes for the table once and
+  disables the fallback if it is gone, rather than logging a Catalog Error per
+  lookup.
 
 **Never compare the two schemas by joining on the version string.** This cost a
 false alarm here: a first pass joined mining and serving on `(purl, version)` and
@@ -297,6 +322,31 @@ treats crypto as package-level in its versions-in-range endpoint, but
 `component_version_crypto.version` is genuinely per-version (216.2M rows carry a
 concrete version), so the legacy per-version split is preserved.
 
+## Performance: what the export indexes
+
+The export has **one index: `component(purl)`**. The per-release tables are laid
+out so that a `purl_id` filter prunes well (10-40 ms), but the per-component ones -
+`component`, `component_status`, `component_metrics`, `contribution` - are not: a
+`purl_id` filter on any of them is a parallel full scan, 50-90 ms and **1-3 s of
+CPU per query**. Under concurrency that CPU is the limit: a batch of ten status
+requests took up to 24 s with eight in flight.
+
+What the code does about it:
+
+- **Never read `component` by `purl_id`.** Read it on its own by its stored purl
+  (a few ms). Not in a join either: once a join carries a `purl_id` predicate
+  across to `component`, DuckDB drops the index and scans, even with the purl in
+  the filter too. Joining `component` only to return `c.purl` cost licenses
+  2.7 s of CPU per lookup.
+- **Skip self-referencing source links** (see Component resolution).
+
+What only the export can fix: `component_status`, `component_metrics` and
+`contribution` have to be read by `purl_id`. Tested on a copy, an index on
+`purl_id` takes a lookup from 63 ms / 2.5 s CPU to 1-2 ms / 6 ms CPU, including
+through prepared statements, and builds in 15 s (`component`) and 7 s
+(`contribution`). Sorting the tables by `purl_id` also works (9 ms). Asking the
+export for `CREATE INDEX ... (purl_id)` on those four tables is the fix.
+
 ## Testing
 
 Tests run on SQLite against `pkg/models/test_schema.go`, a transcription of the
@@ -344,3 +394,10 @@ the file is stored at `storage_compatibility_version = v0.10.2`.
   drive them.
 - **The mining path.** The migration is a clean cut, with no configuration that
   selects the old behaviour.
+- **apk distribution advisories under upstream purls.** The export files
+  Chainguard, Wolfi and MinimOS advisories under the upstream repository's purl as
+  well as their own (344k rows under `pkg:github`). There they fix at apk releases
+  (`3.2.1-r0`), mostly open at version 0 and carry vendor ids with no CVE alias -
+  `pkg:github/openssl/openssl@3.0.0` drew 573 of them on top of 92 upstream
+  advisories. They are excluded unless the purl is an apk package, alongside the
+  TuxCare/Echo repackagers (`osvApkDistroEcosystems` in `pkg/models/osv.go`).
