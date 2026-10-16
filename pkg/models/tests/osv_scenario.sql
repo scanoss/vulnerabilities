@@ -96,3 +96,27 @@ INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_v
 VALUES ('UBUNTU-TEST-0001', 'Ubuntu:22.04:LTS', 'pkg:npm/testosv', '0', '', '9.9.9',
         '{}', '{CVE-2026-7777}', 'distro advisory, must be returned', 'MEDIUM',
         '2026-06-15', '2026-07-20', '2026-07-21');
+
+-- CGA-TEST-0001: a Chainguard advisory filed under the upstream purl, as the export
+-- does for 264,517 rows under pkg:github purls. Its fix is an apk release, so it must
+-- not appear for pkg:npm/testosv.
+INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_version,
+                 affected_versions, aliases, summary, severity, published, modified, indexed_date)
+VALUES ('CGA-TEST-0001', 'Chainguard', 'pkg:npm/testosv', '0', '', '9.9.9-r0',
+        '{}', '{}', 'Chainguard build of testosv', 'HIGH',
+        '2026-01-15', '2026-02-20', '2026-03-01');
+
+-- CGA-TEST-0002: the same kind of advisory under its own apk purl, where it is the
+-- right answer and must be kept.
+INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_version,
+                 affected_versions, aliases, summary, severity, published, modified, indexed_date)
+VALUES ('CGA-TEST-0002', 'Chainguard', 'pkg:apk/chainguard/testosv', '0', '', '9.9.9-r0',
+        '{}', '{}', 'Chainguard build of testosv', 'HIGH',
+        '2026-01-15', '2026-02-20', '2026-03-01');
+
+-- OSV-TEST-SCOPED: a scoped npm package, stored percent-encoded as the export does.
+INSERT INTO osv (id, ecosystem, purl, introduced_version, last_affected, fixed_version,
+                 affected_versions, aliases, summary, severity, published, modified, indexed_date)
+VALUES ('OSV-TEST-SCOPED', 'npm', 'pkg:npm/%40scope/testosv', '0', '', '2.0.0',
+        '{}', '{CVE-2026-0099}', 'scoped package', 'HIGH',
+        '2026-01-15', '2026-02-20', '2026-03-01');

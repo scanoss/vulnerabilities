@@ -52,6 +52,16 @@ func TestPurlRemoveFromVersionComponent(t *testing.T) {
 			input: "pkg:maven/org.apache.xmlgraphics/batik-anim@1.9.1?packaging=sources",
 			want:  "pkg:maven/org.apache.xmlgraphics/batik-anim",
 		},
+		{
+			name:  "Scoped with a raw @",
+			input: "pkg:npm/@babel/core@7.0.0",
+			want:  "pkg:npm/@babel/core",
+		},
+		{
+			name:  "Scoped with a raw @, no version",
+			input: "pkg:npm/@babel/core",
+			want:  "pkg:npm/@babel/core",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,5 +70,21 @@ func TestPurlRemoveFromVersionComponent(t *testing.T) {
 				t.Errorf("utils.PurlRemoveFromVersionComponent() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPurlSpellings(t *testing.T) {
+	tests := []struct {
+		input string
+		want  []string
+	}{
+		{"pkg:npm/%40babel/core", []string{"pkg:npm/%40babel/core", "pkg:npm/@babel/core"}},
+		{"pkg:npm/@babel/core", []string{"pkg:npm/@babel/core", "pkg:npm/%40babel/core"}},
+		{"pkg:github/scanoss/engine", []string{"pkg:github/scanoss/engine"}},
+	}
+	for _, tt := range tests {
+		if got := PurlSpellings(tt.input); !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("PurlSpellings(%q) = %v, want %v", tt.input, got, tt.want)
+		}
 	}
 }

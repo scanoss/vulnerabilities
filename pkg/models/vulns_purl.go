@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/jmoiron/sqlx"
 	purlhelper "github.com/scanoss/go-purl-helper/pkg"
@@ -100,7 +99,7 @@ FROM short_cpe_purl scp
 INNER JOIN nvd_match_criteria nmci ON nmci.short_cpe_id = scp.short_cpe_id
 INNER JOIN cve_match_criteria cmc ON cmc.match_criteria_id = nmci.match_criteria_id
 INNER JOIN cve c ON c.id = cmc.cve_id
-WHERE scp.purl = ?
+WHERE scp.purl IN (?)
 ORDER BY c.cve`
 
 // vulnRow is a single (CVE, match criterion) pair returned by vulnsForPurlQuery. One
@@ -125,8 +124,12 @@ func (r vulnRow) bounds() versionBounds {
 
 // queryVulnRows runs the shared query for the given purl name.
 func (m *VulnsForPurlModel) queryVulnRows(ctx context.Context, purlName string) ([]vulnRow, error) {
+	query, args, err := sqlx.In(vulnsForPurlQuery, utils.PurlSpellings(purlName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build the query: %v", err)
+	}
 	var rows []vulnRow
-	err := m.db.SelectContext(ctx, &rows, m.db.Rebind(vulnsForPurlQuery), strings.TrimSpace(purlName))
+	err = m.db.SelectContext(ctx, &rows, m.db.Rebind(query), args...)
 	if err != nil {
 		zlog.S.Errorf("Failed to query short_cpe for %s: %v", purlName, err)
 		return nil, fmt.Errorf("failed to query the table: %v", err)
