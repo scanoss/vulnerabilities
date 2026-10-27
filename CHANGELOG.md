@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-27
+
 ### Security
 - **Hardened against an unimplemented method killing the server.** The service embedded the papi `VulnerabilitiesServer` *interface* rather than the generated `UnimplementedVulnerabilitiesServer`. The interface value is nil, so any method the service does not implement would dereference it and panic, taking the whole process down. Every method of the current papi interface is implemented, so nothing reaches it today - but the first method papi adds would, silently, as a remotely reachable crash. scanoss/components shipped exactly that: `GetComponentStatistics` arrived in papi v0.42.0, was never implemented, and one unauthenticated request killed the server
 - Upgraded `google.golang.org/grpc` to v1.83.1, `golang.org/x/net` to v0.57.0 and the OpenTelemetry modules (`otel`, `otel/sdk`, `otlptrace`, `otlptracegrpc`) to v1.45.0 to fix open Dependabot security advisories
@@ -229,3 +231,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.11.0]: https://github.com/scanoss/vulnerabilities/compare/v0.10.0...v0.11.0
 [0.12.0]: https://github.com/scanoss/vulnerabilities/compare/v0.11.0...v0.12.0
 [0.13.0]: https://github.com/scanoss/vulnerabilities/compare/v0.12.0...v0.13.0
+[0.16.0]: https://github.com/scanoss/vulnerabilities/compare/v0.15.0...v0.16.0
