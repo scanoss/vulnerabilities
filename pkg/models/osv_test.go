@@ -280,3 +280,43 @@ func TestGetVulnsByPurlExcludesRepackagers(t *testing.T) {
 			"colon too and must not be filtered out")
 	}
 }
+
+// TestGetVulnsByPurlApkDistroEcosystems pins that Chainguard advisories are dropped
+// under an upstream purl and kept under their own apk purl.
+func TestGetVulnsByPurlApkDistroEcosystems(t *testing.T) {
+	db, ctx := newScenarioDB(t)
+	model := NewOSVModel(zlog.S, db)
+
+	upstream, err := model.GetVulnsByPurl(ctx, "pkg:npm/testosv", "1.0.0")
+	if err != nil {
+		t.Fatalf("GetVulnsByPurl() unexpected error: %v", err)
+	}
+	for _, v := range upstream {
+		if v.ID == "CGA-TEST-0001" {
+			t.Errorf("a Chainguard advisory was returned for an npm purl")
+		}
+	}
+	apk, err := model.GetVulnsByPurl(ctx, "pkg:apk/chainguard/testosv", "1.0.0")
+	if err != nil {
+		t.Fatalf("GetVulnsByPurl() unexpected error: %v", err)
+	}
+	if len(apk) != 1 || apk[0].ID != "CGA-TEST-0002" {
+		t.Errorf("GetVulnsByPurl(apk) = %+v, want only CGA-TEST-0002", apk)
+	}
+}
+
+// TestGetVulnsByPurlScoped pins that a scoped npm purl matches whichever way the
+// caller spells the '@'.
+func TestGetVulnsByPurlScoped(t *testing.T) {
+	db, ctx := newScenarioDB(t)
+	model := NewOSVModel(zlog.S, db)
+	for _, purl := range []string{"pkg:npm/%40scope/testosv", "pkg:npm/@scope/testosv"} {
+		vulns, err := model.GetVulnsByPurl(ctx, purl, "1.0.0")
+		if err != nil {
+			t.Fatalf("GetVulnsByPurl(%q) unexpected error: %v", purl, err)
+		}
+		if len(vulns) != 1 || vulns[0].ID != "OSV-TEST-SCOPED" {
+			t.Errorf("GetVulnsByPurl(%q) = %+v, want only OSV-TEST-SCOPED", purl, vulns)
+		}
+	}
+}

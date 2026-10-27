@@ -32,21 +32,19 @@ import (
 // LocalVulnerabilityUseCase handles vulnerability lookups against a local database.
 // It provides concurrent processing of component vulnerability queries using a worker pool pattern.
 type LocalVulnerabilityUseCase struct {
-	ctx        context.Context
-	vulnsPurl  *models.VulnsForPurlModel
-	versionMod *models.VersionModel
-	s          *zap.SugaredLogger
-	config     *config.ServerConfig
+	ctx       context.Context
+	vulnsPurl *models.VulnsForPurlModel
+	s         *zap.SugaredLogger
+	config    *config.ServerConfig
 }
 
 // NewLocalVulnerabilitiesUseCase creates a new instance of the vulnerability Use Case.
 func NewLocalVulnerabilitiesUseCase(ctx context.Context, s *zap.SugaredLogger, config *config.ServerConfig, db *sqlx.DB) *LocalVulnerabilityUseCase {
 	return &LocalVulnerabilityUseCase{
-		ctx:        ctx,
-		vulnsPurl:  models.NewVulnsForPurlModel(db),
-		versionMod: models.NewVersionModel(db),
-		s:          s,
-		config:     config,
+		ctx:       ctx,
+		vulnsPurl: models.NewVulnsForPurlModel(db),
+		s:         s,
+		config:    config,
 	}
 }
 

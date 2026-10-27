@@ -6,9 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- Upcoming changes...
+
 ### Security
+- **Hardened against an unimplemented method killing the server.** The service embedded the papi `VulnerabilitiesServer` *interface* rather than the generated `UnimplementedVulnerabilitiesServer`. The interface value is nil, so any method the service does not implement would dereference it and panic, taking the whole process down. Every method of the current papi interface is implemented, so nothing reaches it today - but the first method papi adds would, silently, as a remotely reachable crash. scanoss/components shipped exactly that: `GetComponentStatistics` arrived in papi v0.42.0, was never implemented, and one unauthenticated request killed the server
 - Upgraded `google.golang.org/grpc` to v1.83.1, `golang.org/x/net` to v0.57.0 and the OpenTelemetry modules (`otel`, `otel/sdk`, `otlptrace`, `otlptracegrpc`) to v1.45.0 to fix open Dependabot security advisories
+- `go-grpc-helper` v0.16.0 → v0.17.0. A failed REST call no longer answers `200` with an empty, unparseable body when the handler set no `x-http-code` trailer: the gateway now falls back to the standard grpc-gateway error response, and gRPC status codes map to their HTTP equivalent, so `Unimplemented` is `501` rather than `500`
+
+### Changed
+- **The service now reads the serving knowledge base instead of the mining database.** The mining path is gone; there is no configuration that selects it. Endpoint routes and response shapes are unchanged
+- CPE lookups read `cpe ⋈ short_cpe_purl` by purl string. The serving schema denormalises the version onto the `cpe` row, so the hops through `purls` and `versions` the mining query needed are gone
+- NVD lookups join `short_cpe_purl → nvd_match_criteria → cve_match_criteria → cve`. The last hop used to be `LIKE '%' || match_criteria_id || '%'` against the delimited `cves.match_criteria_ids` list; `cve_match_criteria` normalises that list, so the join is now an exact, indexed equality rather than an unindexed substring test that could match one criterion id inside another
+- EPSS reads `epss` (was `epss_data`)
+- Component and version resolution no longer goes through `go-component-helper`, which resolves against `all_urls`, `mines` and `versions` - none of which exist in the serving schema. It is replaced by `pkg/resolver`, which resolves `component.purl → purl_id` and reads the version set from `component_version`
+- Version selection is unchanged in behaviour: an exact version must be published by the component, a semver range selects the highest version satisfying it, and a bare purl still resolves to the highest published version
+- Binaries are built with `CGO_ENABLED=1`. The DuckDB driver is a cgo binding, so a pure-Go build can no longer be produced
+- The runtime image moved to `debian:bookworm-slim` with `libstdc++6`, which the cgo binary links against. `debian:buster` has been end-of-life since 2024
+- **Chainguard, Wolfi and MinimOS advisories are excluded unless the purl is an apk package.** The export also files them under the upstream repository's purl (344k rows under `pkg:github`), where they fix at apk releases and carry vendor ids with no CVE alias: `pkg:github/openssl/openssl@3.0.0` drew 573 of them on top of 92 upstream advisories
+- A source link that points back at the component itself (11.4 of 13.9 million) is no longer followed. It cost an unindexed full scan of `component`, about 2.5 s of CPU, for a fallback that could only repeat the lookup
+
+### Added
+- **DuckDB support**, the intended production backend for the serving knowledge base. Set `DB_DRIVER=duckdb` and `DB_PATH` to the serving file, which is opened read-only
+- **Source-purl fallback.** A component that has no data under its own purl is looked up again under the purl its `component.source_purl_id` points at - the repository it was built from. Recovered results carry `info_code: WARNING` and an `info_message` naming the source purl, matching how the current decoration service reports the same thing. This is always on: the papi `vulnerabilitiesv2` contract has no request field to opt in with. It matters because vulnerability data is keyed by purl string, so a package sharing its code with an upstream repository has no rows of its own - `pkg:npm/browser-mjml-table` carries no CPEs while `pkg:github/mjmlio/mjml` carries 34
+- `pkg/db`, opening the serving database for any of duckdb, sqlite or postgres. The embedded drivers get a smaller connection pool, since a connection there is a cursor over a local file rather than a socket to a server
+- `pkg/resolver`, the serving component resolution and the shared source-purl fallback
+- An availability check at the start of each request. Without it an unreachable database would surface as every component reporting `NO_INFO`, which reads as "this component is clean" - the one answer a broken database must never give. The pooled-connection checkout this replaces used to provide the same guarantee as a side effect
+
+### Removed
+- `pkg/models/licenses.go`, `mines.go`, `projects.go` and `versions.go`, along with the unused `versionMod` field. They queried mining tables and nothing reached them
+- `DB_HOST`, `DB_USER`, `DB_PASSWD`, `DB_SCHEMA` and `DB_SSL_MODE` are only read when `DB_DRIVER=postgres`
+
+### Deployment
+- **Breaking:** requires a serving knowledge base. Point `DB_PATH` at the `.duckdb` file and set `DB_DRIVER=duckdb`
+- Verified against the production serving file (72.6 GiB): both endpoints, batch and single, with the source-purl fallback. Point lookups run in 2-35 ms
+- **Re-checked against the updated export.** Every table this service reads - `short_cpe_purl`, `nvd_match_criteria`, `cve_match_criteria`, `cve`, `osv`, `osv_severity`, `epss`, `component`, `component_version` - is column-for-column what it was, and the queries return data unchanged. The update adds a `short_cpe` table (200,459 rows), which this service does not need: `short_cpe_purl` already carries the `short_cpe` string. `osv` still has no `withdrawn` column, so the retracted-vulnerability limitation above stands
+- CVE parity with the mining queries checked over a random sample of 100 purls: 525 `(purl, CVE)` pairs on both sides, none lost, none gained
+- The DuckDB Go driver embeds engine v1.4.1 and reads a file written by the v1.5.5 CLI, because the file is stored at `storage_compatibility_version = v0.10.2`
+- `make build_arm` now cross-compiles with cgo and needs an `aarch64` toolchain (set `CC`); the amd64 build is unaffected
+
+### Fixed
+- **Scoped npm packages, and other purls the export stores encoded or with qualifiers, resolve again.** `component.purl` keeps scoped npm and jsr names percent-encoded (`pkg:npm/%40angular/core`), qualifiers on generic, conda and cran keys, and a raw `+` in some rpm and deb names. The resolver decoded the purl and rebuilt the key, so 1.96 million components (6%) - plus 1.6 million qualified ones - answered `COMPONENT_NOT_FOUND` however they were spelled. It now tries the caller's spelling, the canonical rendering and the decoded form in one indexed lookup
+- **Scoped purls match in the OSV and CPE lookups.** `PurlRemoveFromVersionComponent` cut at the first `@`, reducing `pkg:npm/@scope/name` to `pkg:npm/`; and `osv` always encodes the scope while `short_cpe_purl` holds it both ways. Both spellings are now matched
+- An empty or malformed request answers HTTP 400 instead of 500 "internal server error"
 
 ## [0.15.0] - 2026-08-17
 ### Changed

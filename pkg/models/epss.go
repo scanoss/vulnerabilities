@@ -38,7 +38,7 @@ func (m *EPSSModel) GetEPSSByCVEs(ctx context.Context, cves []string) ([]EPSS, e
 		return []EPSS{}, nil
 	}
 	var epss []EPSS
-	query, args, err := sqlx.In("SELECT cve, epss, percentile FROM epss_data WHERE cve IN (?)", cves)
+	query, args, err := sqlx.In("SELECT cve, epss, percentile FROM epss WHERE cve IN (?)", cves)
 	if err != nil {
 		return nil, err
 	}

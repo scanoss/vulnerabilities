@@ -76,14 +76,22 @@ type OSVSeverity struct {
 // osvQueryWithArgs builds the lookup, appending one exclusion per repackager ecosystem.
 // Placeholders are neutral and rebound by the driver, so the same builder serves both
 // engines.
-func osvQueryWithArgs(purl string) (string, []interface{}) {
-	query := osvByPurlQuery
-	args := []interface{}{purl}
+func osvQueryWithArgs(purl string) (string, []interface{}, error) {
+	query, args, err := sqlx.In(osvByPurlQuery, utils.PurlSpellings(purl))
+	if err != nil {
+		return "", nil, err
+	}
 	for _, pattern := range osvRepackagerEcosystems {
 		query += "\n  AND o.ecosystem NOT LIKE ?"
 		args = append(args, pattern)
 	}
-	return query + "\nORDER BY o.id", args
+	if !strings.HasPrefix(purl, "pkg:apk/") {
+		for _, ecosystem := range osvApkDistroEcosystems {
+			query += "\n  AND o.ecosystem <> ?"
+			args = append(args, ecosystem)
+		}
+	}
+	return query + "\nORDER BY o.id", args, nil
 }
 
 // osvRow is one (vulnerability, affected range) pair as stored.
@@ -121,6 +129,18 @@ type osvRow struct {
 // package vulnerability. The repackagers are 31,093 rows, 0.57%.
 var osvRepackagerEcosystems = []string{"TuxCare:%", "Echo:%"}
 
+// apk distribution ecosystems, excluded unless the purl is itself an apk package.
+//
+// Chainguard, Wolfi and MinimOS advisories describe their own apk builds, and the
+// export also files them under the upstream repository's purl: 264,517 Chainguard
+// and 79,876 Wolfi rows sit under pkg:github purls. There they are noise of the same
+// kind as the repackagers above. Their fixed versions are apk releases ("3.2.1-r0")
+// rather than upstream ones, most open at introduced_version 0, and their ids are
+// vendor ids (CGA-...) carrying no CVE alias. pkg:github/openssl/openssl@3.0.0 drew
+// 573 of them on top of the 92 upstream advisories. Under pkg:apk purls they are the
+// right answer and are kept.
+var osvApkDistroEcosystems = []string{"Chainguard", "Wolfi", "MinimOS"}
+
 // osvByPurlQuery returns every stored range for a purl. The CAST on the array columns
 // is what keeps this portable: PostgreSQL renders them as {a,b}, and the SQLite export
 // stores that same text, so one query serves both engines. COALESCE guards the columns
@@ -137,7 +157,7 @@ const osvByPurlQuery = `SELECT
 	COALESCE(o.fixed_version, '') AS fixed_version,
 	CAST(o.affected_versions AS TEXT) AS affected_versions
 FROM osv o
-WHERE o.purl = ?`
+WHERE o.purl IN (?)`
 
 // NewOSVModel creates a new instance of the OSV Model.
 func NewOSVModel(s *zap.SugaredLogger, db *sqlx.DB) *OSVModel {
@@ -152,9 +172,12 @@ func (m *OSVModel) GetVulnsByPurl(ctx context.Context, purl string, version stri
 		m.s.Error("Please specify a valid Purl to query")
 		return nil, errors.New("please specify a valid Purl to query")
 	}
-	query, args := osvQueryWithArgs(strings.TrimSpace(purl))
+	query, args, err := osvQueryWithArgs(strings.TrimSpace(purl))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build the osv query: %v", err)
+	}
 	var rows []osvRow
-	err := m.db.SelectContext(ctx, &rows, m.db.Rebind(query), args...)
+	err = m.db.SelectContext(ctx, &rows, m.db.Rebind(query), args...)
 	if err != nil {
 		m.s.Errorf("Failed to query the osv table for %v: %v", purl, err)
 		return nil, fmt.Errorf("failed to query the osv table: %v", err)

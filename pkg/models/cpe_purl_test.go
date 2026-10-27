@@ -41,8 +41,14 @@ func TestGetCpeByPurl(t *testing.T) {
 	})
 }
 
-// setupTest creates test database connection and model.
-func setupTest(t *testing.T) (*sqlx.Conn, *CpePurlModel) {
+// setupTest creates the test database and model.
+//
+// The pool is capped at one connection because an in-memory SQLite database is
+// per-connection: a second one would be empty. Nothing may check that connection
+// out and hold it, or the model's own queries would wait for it forever - which is
+// why the fixtures are loaded through the pool (a nil conn) rather than through a
+// checked-out one.
+func setupTest(t *testing.T) (*sqlx.DB, *CpePurlModel) {
 	ctx := context.Background()
 	err := zlog.NewSugaredDevLogger()
 	if err != nil {
@@ -55,24 +61,17 @@ func setupTest(t *testing.T) (*sqlx.Conn, *CpePurlModel) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 	db.SetMaxOpenConns(1)
-	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx)
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-
-	err = LoadTestSQLData(db, ctx, conn)
-	if err != nil {
+	if err = LoadTestSQLData(db, ctx, nil); err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	return conn, NewCpePurlModel(ctx, conn)
+	return db, NewCpePurlModel(ctx, db)
 }
 
 func TestGetCpeByPurl_ValidCases(t *testing.T) {
-	conn, cpeModel := setupTest(t)
-	defer CloseConn(conn)
+	db, cpeModel := setupTest(t)
+	defer CloseDB(db)
 
 	// Test basic purl without requirements
 	t.Run("Basic purl without requirements", func(t *testing.T) {
@@ -86,8 +85,8 @@ func TestGetCpeByPurl_ValidCases(t *testing.T) {
 }
 
 func TestGetCpeByPurl_VersionSpecific(t *testing.T) {
-	conn, cpeModel := setupTest(t)
-	defer CloseConn(conn)
+	db, cpeModel := setupTest(t)
+	defer CloseDB(db)
 
 	t.Run("Specific version without requirements", func(t *testing.T) {
 		got, err := cpeModel.GetCpeByPurl("pkg:github/hapijs/call@1.0.0", "")
@@ -113,8 +112,8 @@ func TestGetCpeByPurl_VersionSpecific(t *testing.T) {
 }
 
 func TestGetCpeByPurl_ErrorCases(t *testing.T) {
-	conn, cpeModel := setupTest(t)
-	defer CloseConn(conn)
+	db, cpeModel := setupTest(t)
+	defer CloseDB(db)
 
 	tests := []struct {
 		name        string
@@ -167,17 +166,12 @@ func TestGetCpesByPurlString(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, nil)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewCpePurlModel(ctx, conn)
+	cpeModel := NewCpePurlModel(ctx, db)
 
 	type inputGetCpeByPurl struct {
 		purl        string
@@ -221,7 +215,7 @@ func TestGetCpesByPurlString(t *testing.T) {
 		})
 	}
 
-	CloseConn(conn)
+	CloseDB(db)
 	_, err = cpeModel.GetCpesByPurlString("pkg:github/hapijs/call", "")
 	if err == nil {
 		t.Errorf("An error was expected because the DB connection was closed, cpeModel.GetCpesByPurlString")
@@ -242,24 +236,19 @@ func TestGetCpesByPurlStringVersion(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer CloseDB(db)
 
-	conn, err := db.Connx(ctx) // Get a connection from the pool
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer CloseConn(conn)
-	err = LoadTestSQLData(db, ctx, conn)
+	err = LoadTestSQLData(db, ctx, nil)
 	if err != nil {
 		t.Fatalf("failed to load SQL test data: %v", err)
 	}
 
-	cpeModel := NewCpePurlModel(ctx, conn)
+	cpeModel := NewCpePurlModel(ctx, db)
 
 	_, err = cpeModel.GetCpesByPurlStringVersion("", "")
 	if err == nil {
 		t.Errorf("Empty purl in cpeModel.GetCpesByPurlStringVersion(), an error was expected")
 	}
 
-	CloseConn(conn)
+	CloseDB(db)
 	_, err = cpeModel.GetCpesByPurlStringVersion("pkg:github/hapijs/call", "")
 	if err == nil {
 		t.Errorf("An error was expected because the DB connection was closed, cpeModel.GetCpesByPurlStringVersion()")

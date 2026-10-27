@@ -23,6 +23,7 @@ import (
 
 	"github.com/golobby/config/v3"
 	"github.com/golobby/config/v3/pkg/feeder"
+	"scanoss.com/vulnerabilities/pkg/db"
 )
 
 func TestServerConfig(t *testing.T) {
@@ -111,8 +112,33 @@ func TestConfigValidation(t *testing.T) {
 				expectError: true,
 			},
 			{
+				name: "invalid when a file-based driver has no path",
+				modifyConf: func(c *ServerConfig) {
+					c.Database.Path = ""
+				},
+				expectError: true,
+			},
+			{
+				name: "invalid with an unknown driver",
+				modifyConf: func(c *ServerConfig) {
+					c.Database.Driver = "mysql"
+				},
+				expectError: true,
+			},
+			{
 				name: "valid config",
 				modifyConf: func(c *ServerConfig) {
+					// The serving database is file-based, so a path is required.
+					c.Database.Driver = db.DriverDuckDB
+					c.Database.Path = "/tmp/serving.duckdb"
+				},
+				expectError: false,
+			},
+			{
+				name: "valid postgres config needs no path",
+				modifyConf: func(c *ServerConfig) {
+					c.Database.Driver = db.DriverPostgres
+					c.Database.Path = ""
 				},
 				expectError: false,
 			},

@@ -67,18 +67,13 @@ func idempotentDDL(sql string) string {
 // only; the tables come from testSchemaDDL in test_schema.go. Paths are relative to a
 // package directory under pkg/.
 var testDataFiles = []string{
+	"../models/tests/component.sql",
+	"../models/tests/component_version.sql",
 	"../models/tests/cpe.sql",
-	"../models/tests/cve.sql",
-	"../models/tests/purl.sql",
 	"../models/tests/short_cpe_purl.sql",
-	"../models/tests/short_cpe.sql",
-	"../models/tests/versions.sql",
-	"../models/tests/ndv_match_criteria_ids.sql",
-	"../models/tests/all_urls.sql",
-	"../models/tests/mines.sql",
-	"../models/tests/licenses.sql",
-	"../models/tests/golang_projects.sql",
-	"../models/tests/projects.sql",
+	"../models/tests/nvd_match_criteria.sql",
+	"../models/tests/cve.sql",
+	"../models/tests/cve_match_criteria.sql",
 	"../models/tests/epss.sql",
 	"../models/tests/vulns_scenario.sql",
 	"../models/tests/osv_scenario.sql",

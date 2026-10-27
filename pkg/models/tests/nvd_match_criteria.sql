@@ -1,0 +1,12 @@
+-- Test data only. The schema comes from testSchemaDDL in pkg/models/test_schema.go; do not add DDL here.
+-- Serving `nvd_match_criteria`, the renamed nvd_match_criteria_ids.
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('6AA6464B-7C66-4ABA-A655-E63CE3CD361B', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('31F486B4-9293-4C09-A7A5-CC0ED9643415', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('3297FAF2-7DF3-4EAC-99DD-D83093846780', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('BB3DD9A8-684A-4D3C-AAC1-795A5154B8FF', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('CF27FE4D-4019-44CB-B86A-0F6EB22043EE', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('2355C9C3-17D4-4024-B60A-55E698139269', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('4BF4A874-DE47-4662-82E8-899258ABCAA4', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('A088E6AE-B04B-4BF2-9710-875767A17644', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('C499F62B-EE47-4F90-8E0C-BE5B3A95E6EB', NULL, '', '', '', '');
+INSERT INTO nvd_match_criteria (match_criteria_id, short_cpe_id, version_start_including, version_start_excluding, version_end_including, version_end_excluding) VALUES ('D9BE19EE-D1C3-4688-A614-0E906F949768', NULL, '', '', '', '');

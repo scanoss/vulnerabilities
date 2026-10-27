@@ -2,12 +2,13 @@
   "App": {
     "Name": "Vulnerabilities Service",
     "Debug": true,
-    "Mode":  "dev"
+    "Mode": "dev"
   },
   "Database": {
-    "Driver": "postgres",
-    "Host":   "host.docker.internal",
-    "User":   "scanoss",
+    "Driver": "duckdb",
+    "Path": "/var/lib/scanoss/serving.duckdb",
+    "Host": "host.docker.internal",
+    "User": "scanoss",
     "Passwd": "secret123!",
     "Schema": "scanoss"
   }

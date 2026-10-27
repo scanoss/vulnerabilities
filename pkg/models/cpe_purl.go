@@ -29,8 +29,8 @@ import (
 )
 
 type CpePurlModel struct {
-	ctx  context.Context
-	conn *sqlx.Conn
+	ctx context.Context
+	db  *sqlx.DB
 }
 
 type CpePurl struct {
@@ -40,9 +40,30 @@ type CpePurl struct {
 }
 
 // NewCpePurlModel creates a new instance of the CPE Purl Model.
-func NewCpePurlModel(ctx context.Context, conn *sqlx.Conn) *CpePurlModel {
-	return &CpePurlModel{ctx: ctx, conn: conn}
+func NewCpePurlModel(ctx context.Context, db *sqlx.DB) *CpePurlModel {
+	return &CpePurlModel{ctx: ctx, db: db}
 }
+
+// cpesByPurlQuery returns every CPE recorded against a purl.
+//
+// The serving schema denormalises the version onto the cpe row, so the join is
+// just cpe -> short_cpe_purl. The mining schema needed two more hops, through
+// `purls` for the purl string and `versions` for the version name; neither table
+// exists here. version_semver is aliased to `semver` so CpePurl and
+// FilterCpesByRequirement carry over unchanged.
+const cpesByPurlQuery = `SELECT DISTINCT c.cpe AS cpe, c.version_name AS version_name,
+	COALESCE(c.version_semver, '') AS semver
+FROM cpe c
+INNER JOIN short_cpe_purl scp ON scp.short_cpe_id = c.short_cpe_id
+WHERE scp.purl IN (?)
+ORDER BY c.version_name NULLS LAST`
+
+// cpesByPurlVersionQuery is cpesByPurlQuery pinned to one version.
+const cpesByPurlVersionQuery = `SELECT DISTINCT c.cpe AS cpe, c.version_name AS version_name,
+	COALESCE(c.version_semver, '') AS semver
+FROM cpe c
+INNER JOIN short_cpe_purl scp ON scp.short_cpe_id = c.short_cpe_id
+WHERE scp.purl IN (?) AND c.version_name = ?`
 
 // GetCpeByPurl If version is specified in purl string the requirement is ignored.
 func (m *CpePurlModel) GetCpeByPurl(purlString, purlReq string) ([]CpePurl, error) {
@@ -79,18 +100,12 @@ func (m *CpePurlModel) GetCpesByPurlString(purlString string, purlReq string) ([
 		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
+	query, args, err := sqlx.In(cpesByPurlQuery, utils.PurlSpellings(purlString))
+	if err != nil {
+		return []CpePurl{}, fmt.Errorf("failed to build the CPE query: %v", err)
+	}
 	var allCpes []CpePurl
-	zlog.S.Debugf("ctx %v", m.ctx)
-	err := m.conn.SelectContext(m.ctx, &allCpes,
-		"SELECT tcp.cpe, v.version_name, v.semver "+
-			"FROM cpes tcp "+
-			"INNER JOIN short_cpe_purl scp ON tcp.short_cpe_id = scp.cpe_id  "+
-			"INNER JOIN purls tp ON scp.purl_id = tp.id "+
-			"INNER JOIN versions v ON tcp.version_id = v.id "+
-			"WHERE tp.purl  = $1"+
-			" ORDER BY v.version_name NULLS LAST;",
-		purlString)
-
+	err = m.db.SelectContext(m.ctx, &allCpes, m.db.Rebind(query), args...)
 	if err != nil {
 		zlog.S.Errorf("Failed to query Cpe for %v - %v", purlString, err)
 		return []CpePurl{}, fmt.Errorf("failed to query the CPE table: %v", err)
@@ -111,15 +126,12 @@ func (m *CpePurlModel) GetCpesByPurlStringVersion(purlString, purlVersion string
 		return []CpePurl{}, errors.New("please specify a valid Purl Name to query")
 	}
 
+	query, args, err := sqlx.In(cpesByPurlVersionQuery, utils.PurlSpellings(purlString), purlVersion)
+	if err != nil {
+		return []CpePurl{}, fmt.Errorf("failed to build the cpe query: %v", err)
+	}
 	var cpuPurls []CpePurl
-	err := m.conn.SelectContext(m.ctx, &cpuPurls,
-		"SELECT tc.cpe, v.version_name, v.semver "+
-			"FROM cpes tc "+
-			"INNER JOIN short_cpe_purl scp ON tc.short_cpe_id = scp.cpe_id "+
-			"INNER JOIN purls p ON scp.purl_id = p.id "+
-			"INNER JOIN versions v ON tc.version_id = v.id "+
-			" WHERE p.purl = $1 AND v.version_name=$2;",
-		purlString, purlVersion)
+	err = m.db.SelectContext(m.ctx, &cpuPurls, m.db.Rebind(query), args...)
 	if err != nil {
 		zlog.S.Errorf("Failed to query cpe table for %v - %v", purlString, err)
 		return []CpePurl{}, fmt.Errorf("failed to query the cpe table: %v", err)
